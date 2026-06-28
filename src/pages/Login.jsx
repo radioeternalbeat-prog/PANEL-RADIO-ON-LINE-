@@ -43,9 +43,9 @@ export default function Login() {
         <div className="relative hidden flex-col justify-between bg-brand-grad p-8 text-white md:flex">
           <div className="flex items-center gap-3">
             <img
-              src="/logo-icon.png"
+              src="/logo-icon.svg"
               alt="Eternal Beat Medios"
-              className="h-12 w-12 rounded-full object-cover ring-2 ring-white/40"
+              className="h-14 w-14"
             />
             <div className="leading-tight">
               <p className="font-display font-extrabold">ETERNAL BEAT</p>

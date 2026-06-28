@@ -60,9 +60,9 @@ export default function Layout() {
       >
         <div className="flex h-16 items-center gap-2.5 border-b border-line px-5">
           <img
-            src="/logo-icon.png"
+            src="/logo-icon.svg"
             alt="Eternal Beat Medios"
-            className="h-9 w-9 rounded-full object-cover ring-1 ring-line"
+            className="h-10 w-10"
           />
           <div className="leading-tight">
             <p className="font-display text-sm font-extrabold tracking-tight text-fg">ETERNAL BEAT</p>

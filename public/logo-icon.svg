@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Eternal Beat Medios">
+  <defs>
+    <clipPath id="ebm-disc">
+      <circle cx="120" cy="120" r="103" />
+    </clipPath>
+  </defs>
+
+  <!-- Disco / anillos -->
+  <circle cx="120" cy="120" r="118" fill="#1d2026" />
+  <circle cx="120" cy="120" r="116" fill="none" stroke="#FF8000" stroke-width="3" opacity="0.9" />
+  <circle cx="120" cy="120" r="103" fill="#21242b" stroke="#FF8000" stroke-width="6" />
+
+  <!-- Onda de sonido + dispersión en píxeles -->
+  <g clip-path="url(#ebm-disc)" fill="none" stroke="#FF8000" stroke-width="7"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 120 H70 l6 -6 l6 16 l7 -52 l7 86 l6 -64 l6 36 l6 -16 l5 10 l5 -4 H132" />
+  </g>
+
+  <!-- Cuadros (efecto pixelado / dispersión) -->
+  <g fill="#FF8000">
+    <!-- conectores -->
+    <path d="M132 120 L146 108 M132 120 L146 132 M132 120 L150 120"
+          stroke="#FF8000" stroke-width="5" stroke-linecap="round" fill="none" />
+    <rect x="146" y="101" width="14" height="14" rx="2.5" />
+    <rect x="146" y="125" width="13" height="13" rx="2.5" />
+    <rect x="167" y="113" width="11" height="11" rx="2" />
+    <rect x="170" y="96" width="9" height="9" rx="2" opacity="0.9" />
+    <rect x="171" y="133" width="8" height="8" rx="2" opacity="0.9" />
+    <rect x="186" y="118" width="7" height="7" rx="1.5" opacity="0.8" />
+  </g>
+</svg>
