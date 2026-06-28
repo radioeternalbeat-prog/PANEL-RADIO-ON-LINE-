@@ -44,6 +44,9 @@ export default {
       backgroundImage: {
         "brand-grad": "linear-gradient(135deg, #FF8000 0%, #FFAE36 100%)",
       },
+      animation: {
+        "spin-slow": "spin 2.5s linear infinite",
+      },
     },
   },
   plugins: [],
