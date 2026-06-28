@@ -81,13 +81,34 @@ npm run dev                                 # http://localhost:5173
 
 ## 🌍 Publicarlo en internet (URL pública gratis)
 
+Como el backend necesita un proceso Node siempre activo (WebSocket + SQLite), hay dos
+formas de publicarlo:
+
+### Opción 1 — Todo en un servicio (Render) — la más simple
+
 El repositorio incluye un blueprint `render.yaml` para [Render.com](https://render.com):
 
 1. Entra a Render y crea una cuenta (puedes usar tu GitHub).
 2. **New + → Blueprint** y conecta este repositorio.
 3. Render lee `render.yaml` y crea el servicio. Pulsa **Apply**.
-4. En unos minutos tendrás una URL pública `https://...onrender.com` que puedes abrir
-   desde cualquier navegador. Inicia sesión con `admin` / `admin123`.
+4. En unos minutos tendrás una URL pública `https://...onrender.com`. Inicia sesión con
+   `admin` / `admin123`.
+
+### Opción 2 — Frontend en Netlify + backend en Render
+
+Netlify aloja el **frontend** (estático) y Render el **backend**. El repo incluye
+`netlify.toml` ya configurado.
+
+1. **Backend (Render):** sigue la Opción 1 y copia la URL del servicio, por ejemplo
+   `https://panel-radio-online.onrender.com`.
+2. **Frontend (Netlify):** entra a [netlify.com](https://netlify.com) → **Add new site →
+   Import an existing project** → elige este repositorio. Netlify detecta `netlify.toml`
+   (build `npm run build`, carpeta `dist`).
+3. En Netlify → **Site settings → Environment variables**, añade dos variables apuntando a
+   tu backend:
+   - `VITE_API_URL = https://TU-BACKEND.onrender.com/api`
+   - `VITE_WS_URL  = wss://TU-BACKEND.onrender.com/ws`
+4. Pulsa **Deploy**. Abre la URL de Netlify e inicia sesión con `admin` / `admin123`.
 
 > Nota: en el plan gratuito de Render el disco es efímero, por lo que la base de datos
 > se reinicia con cada despliegue. Para datos permanentes, conecta un disco persistente

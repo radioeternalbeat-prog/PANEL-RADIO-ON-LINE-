@@ -1,0 +1,30 @@
+# Configuración de despliegue del FRONTEND en Netlify (https://netlify.com)
+#
+# Netlify solo aloja el frontend (sitio estático). El backend (Express + WebSocket +
+# SQLite) debe desplegarse aparte en un host con Node persistente, p. ej. Render
+# usando el archivo render.yaml de este repositorio.
+#
+# Pasos:
+#   1. Despliega primero el backend (Render) y copia su URL pública,
+#      por ejemplo: https://panel-radio-online.onrender.com
+#   2. En Netlify: "Add new site" -> "Import an existing project" -> elige este repo.
+#      Netlify leerá este archivo (build y carpeta de publicación ya configurados).
+#   3. En Netlify -> Site settings -> Environment variables, añade:
+#         VITE_API_URL = https://TU-BACKEND.onrender.com/api
+#         VITE_WS_URL  = wss://TU-BACKEND.onrender.com/ws
+#   4. Pulsa "Deploy". Tendrás una URL pública de Netlify para abrir el panel.
+#
+# Inicia sesión con usuario: admin · contraseña: admin123
+
+[build]
+  command = "npm install && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Enrutado del SPA: cualquier ruta se resuelve con index.html (React Router).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
