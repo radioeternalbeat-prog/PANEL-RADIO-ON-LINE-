@@ -12,7 +12,7 @@ export function MezcladorProvider({ children }) {
   }, []);
 
   const cargarEnDeck = useCallback((id, pista) => {
-    cargadorRef.current?.(id, pista);
+    return cargadorRef.current?.(id, pista);
   }, []);
 
   const value = useMemo(

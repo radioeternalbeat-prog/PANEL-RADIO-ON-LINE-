@@ -28,6 +28,7 @@ export default function PanelCola() {
   const [biblioteca, setBiblioteca] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [cargandoDeck, setCargandoDeck] = useState(null);
   const { cargarEnDeck } = useMezclador();
   const {
     cola,
@@ -55,6 +56,17 @@ export default function PanelCola() {
       t.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
       (t.artista || "").toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  // Carga una pista en el deck A/B; si no tiene audio, el mezclador busca su preview.
+  async function aDeck(deckId, t) {
+    const clave = `${deckId}-${t.id}`;
+    setCargandoDeck(clave);
+    try {
+      await cargarEnDeck(deckId, t);
+    } finally {
+      setCargandoDeck((c) => (c === clave ? null : c));
+    }
+  }
 
   return (
     <div className="card flex h-full flex-col p-5">
@@ -163,25 +175,23 @@ export default function PanelCola() {
                 <p className="truncate text-sm font-medium text-fg">{t.titulo}</p>
                 <p className="truncate text-xs text-muted">{t.artista}</p>
               </div>
-              {/* Cargar en deck A / B del mezclador */}
-              {t.previewUrl && (
-                <>
-                  <button
-                    onClick={() => cargarEnDeck("A", t)}
-                    className="rounded-md bg-brand-500/15 px-2 py-1 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30"
-                    title="Cargar en Deck A"
-                  >
-                    A
-                  </button>
-                  <button
-                    onClick={() => cargarEnDeck("B", t)}
-                    className="rounded-md bg-brand-500/15 px-2 py-1 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30"
-                    title="Cargar en Deck B"
-                  >
-                    B
-                  </button>
-                </>
-              )}
+              {/* Cargar en deck A / B del mezclador (todas las pistas) */}
+              <button
+                onClick={() => aDeck("A", t)}
+                disabled={cargandoDeck === `A-${t.id}`}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
+                title="Cargar en Deck A"
+              >
+                {cargandoDeck === `A-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "A"}
+              </button>
+              <button
+                onClick={() => aDeck("B", t)}
+                disabled={cargandoDeck === `B-${t.id}`}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
+                title="Cargar en Deck B"
+              >
+                {cargandoDeck === `B-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "B"}
+              </button>
               <button
                 onClick={() => encolar(t)}
                 className="rounded-md bg-surface2 p-1.5 text-muted transition hover:text-brand-500"

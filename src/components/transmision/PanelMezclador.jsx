@@ -85,7 +85,7 @@ export default function PanelMezclador() {
   useEffect(() => {
     api
       .biblioteca()
-      .then((b) => setBiblioteca(b.filter((t) => t.previewUrl)))
+      .then(setBiblioteca)
       .catch(() => {});
   }, []);
 
@@ -235,20 +235,43 @@ export default function PanelMezclador() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  async function cargar(id, pista) {
+  // Busca un preview real en iTunes si la pista no trae audio (ej. importada de Library.xml).
+  async function resolverPreview(pista) {
+    if (pista.previewUrl) return pista;
+    try {
+      const q = `${pista.titulo} ${pista.artista || ""}`.trim();
+      const { resultados } = await api.buscarItunes(q, 1);
+      const r = resultados?.[0];
+      if (r?.previewUrl) {
+        return { ...pista, previewUrl: r.previewUrl, artwork: pista.artwork || r.artwork };
+      }
+    } catch {
+      /* noop */
+    }
+    return pista;
+  }
+
+  async function cargar(id, pistaOriginal) {
     const g = asegurarGrafo();
     const d = g[id];
-    d.audio.src = pista.previewUrl;
-    d.audio.load();
+    // Mostrar el título de inmediato mientras se resuelve el audio.
     setters[id]((s) => ({
       ...s,
-      track: pista,
+      track: pistaOriginal,
       playing: false,
       peaks: null,
       cues: [null, null, null],
       loop: { activo: false, inicio: 0, fin: 0, beats: 0 },
     }));
-    // Calcular forma de onda (decodificar audio).
+
+    const pista = await resolverPreview(pistaOriginal);
+    if (!pista.previewUrl) return; // no se encontró audio reproducible
+
+    d.audio.src = pista.previewUrl;
+    d.audio.load();
+    setters[id]((s) => ({ ...s, track: pista }));
+
+    // Forma de onda (decodificar audio).
     try {
       const resp = await fetch(pista.previewUrl);
       const arr = await resp.arrayBuffer();
