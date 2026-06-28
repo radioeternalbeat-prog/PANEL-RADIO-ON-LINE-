@@ -50,26 +50,48 @@ iTunes funciona como **motor de gestión y base de datos de canciones**:
 
 ## 🚀 Cómo ejecutarlo
 
-Necesitas **dos terminales** (una para el backend y otra para el frontend).
+### Opción A — Todo en uno (una sola URL) ✅ recomendada para verlo
 
-### 1) Backend (API + WebSocket)
+El backend puede servir también el frontend ya compilado, así usas **una única dirección**:
 
 ```bash
+# 1) Compilar el frontend
+npm install
+npm run build
+
+# 2) Arrancar el servidor (sirve API + WebSocket + panel)
 cd server
 npm install
-cp .env.example .env      # opcional: ajusta PORT y JWT_SECRET
-npm start                 # API en http://localhost:4000
+npm start
 ```
 
-### 2) Frontend (panel web)
+Abre **http://localhost:4000** e inicia sesión con **`admin` / `admin123`**.
+
+### Opción B — Desarrollo (dos servidores, con recarga en caliente)
 
 ```bash
+# Terminal 1 - Backend
+cd server && npm install && npm start      # http://localhost:4000
+
+# Terminal 2 - Frontend
 npm install
-cp .env.example .env      # define VITE_API_URL y VITE_WS_URL
-npm run dev               # panel en http://localhost:5173
+cp .env.example .env                        # apunta a http://localhost:4000
+npm run dev                                 # http://localhost:5173
 ```
 
-Luego entra con **usuario `admin` y contraseña `admin123`**.
+## 🌍 Publicarlo en internet (URL pública gratis)
+
+El repositorio incluye un blueprint `render.yaml` para [Render.com](https://render.com):
+
+1. Entra a Render y crea una cuenta (puedes usar tu GitHub).
+2. **New + → Blueprint** y conecta este repositorio.
+3. Render lee `render.yaml` y crea el servicio. Pulsa **Apply**.
+4. En unos minutos tendrás una URL pública `https://...onrender.com` que puedes abrir
+   desde cualquier navegador. Inicia sesión con `admin` / `admin123`.
+
+> Nota: en el plan gratuito de Render el disco es efímero, por lo que la base de datos
+> se reinicia con cada despliegue. Para datos permanentes, conecta un disco persistente
+> o una base de datos externa.
 
 ## 🔌 API REST
 

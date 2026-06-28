@@ -4,6 +4,9 @@
   "description": "API backend para PANEL RADIO ONLINE (Express + JWT + WebSocket)",
   "type": "module",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=22.5"
+  },
   "scripts": {
     "start": "node --experimental-sqlite src/index.js",
     "dev": "node --experimental-sqlite --watch src/index.js"

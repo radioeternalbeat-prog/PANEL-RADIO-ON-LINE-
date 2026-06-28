@@ -1,5 +1,8 @@
 import "dotenv/config";
 import http from "http";
+import path from "node:path";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 
@@ -11,6 +14,7 @@ import autodjRoutes from "./routes/autodj.routes.js";
 import itunesRoutes from "./routes/itunes.routes.js";
 import { iniciarWebSocket } from "./realtime.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -32,10 +36,22 @@ app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
 app.use("/api/autodj", requiereAuth, autodjRoutes);
 app.use("/api/itunes", requiereAuth, itunesRoutes);
 
-// Manejo de rutas no encontradas
-app.use((req, res) => {
+// 404 para rutas de API no encontradas
+app.use("/api", (req, res) => {
   res.status(404).json({ mensaje: "Recurso no encontrado." });
 });
+
+// --- Servir el frontend compilado (producción) ---
+// Si existe la carpeta dist (resultado de `npm run build` del frontend),
+// el backend la sirve y entrega index.html para las rutas del SPA.
+const distDir = path.resolve(__dirname, "../../dist");
+if (existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get(/^(?!\/api).*/, (req, res) => {
+    res.sendFile(path.join(distDir, "index.html"));
+  });
+  console.log("🌐 Sirviendo frontend desde", distDir);
+}
 
 // Manejo de errores
 app.use((err, req, res, next) => {
@@ -47,6 +63,6 @@ const server = http.createServer(app);
 iniciarWebSocket(server);
 
 server.listen(PORT, () => {
-  console.log(`🚀 API PANEL RADIO ONLINE escuchando en http://localhost:${PORT}`);
+  console.log(`🚀 PANEL RADIO ONLINE escuchando en http://localhost:${PORT}`);
   console.log(`📡 WebSocket de estadísticas en ws://localhost:${PORT}/ws`);
 });

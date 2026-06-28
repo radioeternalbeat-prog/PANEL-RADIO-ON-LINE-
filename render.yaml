@@ -1,0 +1,23 @@
+# Blueprint de despliegue para Render.com (https://render.com)
+# Publica PANEL RADIO ONLINE como un único servicio web:
+# el backend Express sirve la API, el WebSocket y el frontend compilado.
+#
+# Cómo usarlo:
+#   1. Sube este repositorio a GitHub (ya está).
+#   2. Entra a https://render.com, crea una cuenta y elige "New +" → "Blueprint".
+#   3. Conecta este repositorio. Render detectará este archivo y creará el servicio.
+#   4. Pulsa "Apply". En unos minutos tendrás una URL pública (https://...onrender.com).
+#
+# Inicia sesión con usuario: admin  ·  contraseña: admin123
+services:
+  - type: web
+    name: panel-radio-online
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: JWT_SECRET
+        generateValue: true

@@ -1,7 +1,16 @@
 // Cliente HTTP central para la API de PANEL RADIO ONLINE.
 // Adjunta automáticamente el token JWT y maneja errores y expiración de sesión.
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+// URL base de la API.
+// - En desarrollo, usa VITE_API_URL (p. ej. http://localhost:4000/api).
+// - En producción (frontend servido por el backend), usa el mismo origen: /api.
+function resolverApiUrl() {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== "undefined") return `${window.location.origin}/api`;
+  return "http://localhost:4000/api";
+}
+
+const API_URL = resolverApiUrl();
 
 const TOKEN_KEY = "pro_token";
 

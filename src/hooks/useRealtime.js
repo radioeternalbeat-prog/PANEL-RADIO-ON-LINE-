@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { getToken } from "../api/client";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:4000/ws";
+// URL del WebSocket.
+// - En desarrollo, usa VITE_WS_URL (p. ej. ws://localhost:4000/ws).
+// - En producción, deriva del mismo origen (ws:// o wss:// según el protocolo).
+function resolverWsUrl() {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  if (typeof window !== "undefined") {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.host}/ws`;
+  }
+  return "ws://localhost:4000/ws";
+}
+
+const WS_URL = resolverWsUrl();
 
 // Hook que se conecta al WebSocket de estadísticas en vivo y devuelve
 // el último snapshot recibido y el estado de la conexión.
