@@ -26,11 +26,11 @@ export default function Transmision() {
         {/* Mezclador DJ en vivo (centro de la cabina) */}
         <PanelMezclador />
 
-        {/* Fila 1: Reproductor · Cola · (Reloj + Clima) — altura fija para que queden alineados */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3 xl:h-[34rem]">
+        {/* Fila 1: Reproductor · Cola · (Reloj + Clima) — alineados arriba, altura natural */}
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
           <PanelReproductor />
           <PanelCola />
-          <div className="grid grid-rows-2 gap-5">
+          <div className="flex flex-col gap-5">
             <PanelReloj />
             <PanelClima />
           </div>
