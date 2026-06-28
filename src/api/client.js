@@ -93,4 +93,42 @@ export const api = {
     request(`/itunes/buscar?termino=${encodeURIComponent(termino)}&limite=${limite}`),
   importarItunes: (pistas) => request("/itunes/importar", { metodo: "POST", cuerpo: { pistas } }),
   importarLibraryXml: (xml) => request("/itunes/importar-xml", { metodo: "POST", cuerpo: { xml } }),
+
+  // Mensajes (WhatsApp / oyentes)
+  mensajes: () => request("/mensajes"),
+  agregarMensaje: (datos) => request("/mensajes", { metodo: "POST", cuerpo: datos }),
+  estadoMensaje: (id, estado) => request(`/mensajes/${id}`, { metodo: "PATCH", cuerpo: { estado } }),
+  eliminarMensaje: (id) => request(`/mensajes/${id}`, { metodo: "DELETE" }),
+
+  // Samples / soundboard
+  samples: () => request("/samples"),
+  eliminarSample: (id) => request(`/samples/${id}`, { metodo: "DELETE" }),
+  // La subida usa multipart, se hace con un helper aparte.
 };
+
+// Sube un sample (audio) vía multipart/form-data.
+export async function subirSample({ archivo, nombre, categoria, color }) {
+  const fd = new FormData();
+  fd.append("archivo", archivo);
+  if (nombre) fd.append("nombre", nombre);
+  if (categoria) fd.append("categoria", categoria);
+  if (color) fd.append("color", color);
+
+  const token = getToken();
+  const resp = await fetch(`${API_URL}/samples`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir el sample.");
+  return datos;
+}
+
+// URL absoluta para un recurso servido por el backend (ej. /uploads/..).
+export function urlRecurso(ruta) {
+  if (!ruta) return ruta;
+  if (/^https?:\/\//.test(ruta)) return ruta;
+  const base = API_URL.replace(/\/api$/, "");
+  return `${base}${ruta}`;
+}

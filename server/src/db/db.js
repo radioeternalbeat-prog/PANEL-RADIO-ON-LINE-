@@ -88,6 +88,26 @@ function crearEsquema() {
       orden INTEGER,
       gb INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS samples (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      categoria TEXT DEFAULT 'efecto',
+      archivo TEXT NOT NULL,
+      url TEXT NOT NULL,
+      color TEXT,
+      creado INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS mensajes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      autor TEXT,
+      telefono TEXT,
+      texto TEXT NOT NULL,
+      estado TEXT DEFAULT 'pendiente',
+      origen TEXT DEFAULT 'manual',
+      creado INTEGER
+    );
   `);
 }
 

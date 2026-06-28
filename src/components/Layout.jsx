@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  RadioTower,
   Search,
   Settings,
   Sun,
@@ -20,6 +21,7 @@ import MiniReproductor from "./MiniReproductor";
 
 const navItems = [
   { to: "/", label: "Estaciones", icon: LayoutDashboard, end: true },
+  { to: "/transmision", label: "Transmisión", icon: RadioTower },
   { to: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { to: "/autodj", label: "AutoDJ", icon: ListMusic },
   { to: "/configuracion", label: "Configuración", icon: Settings },

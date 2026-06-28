@@ -235,3 +235,80 @@ export const estadisticasRepo = {
     return db.prepare("SELECT dia, gb FROM ancho_banda ORDER BY orden").all();
   },
 };
+
+// ---------- Samples / Soundboard ----------
+function mapSample(r) {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    categoria: r.categoria,
+    url: r.url,
+    color: r.color,
+    creado: r.creado,
+  };
+}
+
+export const samplesRepo = {
+  listar() {
+    return db.prepare("SELECT * FROM samples ORDER BY id DESC").all().map(mapSample);
+  },
+  agregar({ nombre, categoria, archivo, url, color }) {
+    const info = db
+      .prepare(
+        `INSERT INTO samples (nombre, categoria, archivo, url, color, creado)
+         VALUES (?,?,?,?,?,?)`
+      )
+      .run(nombre, categoria || "efecto", archivo, url, color || null, Date.now());
+    return mapSample(db.prepare("SELECT * FROM samples WHERE id = ?").get(info.lastInsertRowid));
+  },
+  obtener(id) {
+    const r = db.prepare("SELECT * FROM samples WHERE id = ?").get(id);
+    return r ? mapSample(r) : null;
+  },
+  eliminar(id) {
+    const r = db.prepare("SELECT * FROM samples WHERE id = ?").get(id);
+    if (!r) return null;
+    db.prepare("DELETE FROM samples WHERE id = ?").run(id);
+    return mapSample(r);
+  },
+};
+
+// ---------- Mensajes (WhatsApp / oyentes) ----------
+function mapMensaje(r) {
+  return {
+    id: r.id,
+    autor: r.autor,
+    telefono: r.telefono,
+    texto: r.texto,
+    estado: r.estado,
+    origen: r.origen,
+    creado: r.creado,
+  };
+}
+
+export const mensajesRepo = {
+  listar() {
+    return db.prepare("SELECT * FROM mensajes ORDER BY id DESC LIMIT 200").all().map(mapMensaje);
+  },
+  agregar({ autor, telefono, texto, origen }) {
+    const info = db
+      .prepare(
+        `INSERT INTO mensajes (autor, telefono, texto, estado, origen, creado)
+         VALUES (?,?,?,?,?,?)`
+      )
+      .run(autor || "Oyente", telefono || null, texto, "pendiente", origen || "manual", Date.now());
+    return mapMensaje(db.prepare("SELECT * FROM mensajes WHERE id = ?").get(info.lastInsertRowid));
+  },
+  actualizarEstado(id, estado) {
+    const r = db.prepare("SELECT * FROM mensajes WHERE id = ?").get(id);
+    if (!r) return null;
+    db.prepare("UPDATE mensajes SET estado = ? WHERE id = ?").run(estado, id);
+    return mapMensaje(db.prepare("SELECT * FROM mensajes WHERE id = ?").get(id));
+  },
+  eliminar(id) {
+    const r = db.prepare("SELECT * FROM mensajes WHERE id = ?").get(id);
+    if (!r) return null;
+    db.prepare("DELETE FROM mensajes WHERE id = ?").run(id);
+    return mapMensaje(r);
+  },
+};
