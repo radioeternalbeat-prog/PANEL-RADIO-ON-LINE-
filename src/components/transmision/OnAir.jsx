@@ -1,19 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Power, Radio } from "lucide-react";
 import { nivelMaximo } from "../../audio/nivelBus";
+import { useOnAir } from "../../context/OnAirContext";
 
-const STORAGE = "prb_on_air";
 const NUM_BARRAS = 7;
 
 export default function OnAir() {
-  const [enVivo, setEnVivo] = useState(() => localStorage.getItem(STORAGE) === "1");
+  const { enVivo, setEnVivo } = useOnAir();
   const barrasRef = useRef([]);
   const enVivoRef = useRef(enVivo);
   enVivoRef.current = enVivo;
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE, enVivo ? "1" : "0");
-  }, [enVivo]);
 
   // Anima las barras del ecualizador con el nivel de audio real (+ leve oscilación).
   useEffect(() => {

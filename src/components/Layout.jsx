@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  Radio,
   RadioTower,
   Search,
   Settings,
@@ -17,6 +18,7 @@ import {
 import { cuenta } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useOnAir } from "../context/OnAirContext";
 import MiniReproductor from "./MiniReproductor";
 
 const navItems = [
@@ -45,6 +47,7 @@ export default function Layout() {
   const [abierto, setAbierto] = useState(false);
   const navigate = useNavigate();
   const { usuario, cerrarSesion } = useAuth();
+  const { enVivo } = useOnAir();
   const persona = usuario || cuenta;
 
   function salir() {
@@ -139,6 +142,20 @@ export default function Layout() {
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            {enVivo && (
+              <button
+                onClick={() => navigate("/transmision")}
+                className="flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/15 px-3 py-1.5 text-xs font-bold text-red-500"
+                title="Estás al aire — ir a Transmisión"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                <Radio size={13} className="hidden sm:inline" />
+                AL AIRE
+              </button>
+            )}
             <BotonTema />
             <button className="relative rounded-lg p-2 text-muted hover:bg-surface2 hover:text-fg">
               <Bell size={20} />
