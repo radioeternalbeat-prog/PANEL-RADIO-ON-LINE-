@@ -3,7 +3,7 @@
 // 2) Parseo de la biblioteca local exportada (iTunes Library.xml, formato plist).
 
 import { parse as parsePlist } from "plist";
-import { msADuracion } from "../data/store.js";
+import { msADuracion } from "../utils.js";
 
 const ITUNES_SEARCH = "https://itunes.apple.com/search";
 

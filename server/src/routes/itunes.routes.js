@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { agregarPistas } from "../data/store.js";
+import { pistasRepo } from "../db/repos.js";
 import { buscarEnItunes, parsearLibraryXml } from "../services/itunes.js";
 
 const router = Router();
@@ -26,7 +26,7 @@ router.post("/importar", (req, res) => {
   if (!pistas.length) {
     return res.status(400).json({ mensaje: "No se enviaron pistas para importar." });
   }
-  const { agregadas, omitidas } = agregarPistas(
+  const { agregadas, omitidas } = pistasRepo.agregarVarias(
     pistas.map((p) => ({ ...p, fuente: "itunes" }))
   );
   res.status(201).json({
@@ -52,7 +52,7 @@ router.post("/importar-xml", (req, res) => {
   if (!pistas.length) {
     return res.status(400).json({ mensaje: "El XML no contiene canciones reconocibles." });
   }
-  const { agregadas, omitidas } = agregarPistas(pistas);
+  const { agregadas, omitidas } = pistasRepo.agregarVarias(pistas);
   res.status(201).json({
     mensaje: `${agregadas.length} canción(es) importada(s) desde iTunes.`,
     totalEnArchivo: pistas.length,

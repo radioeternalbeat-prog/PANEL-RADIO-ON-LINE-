@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { usuarios } from "./data/store.js";
+import { usuariosRepo } from "./db/repos.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "cambia-esta-clave-en-produccion";
 const JWT_EXPIRA = process.env.JWT_EXPIRA || "8h";
@@ -14,9 +14,9 @@ export function generarToken(usuario) {
 }
 
 export function login(nombreUsuario, clave) {
-  const usuario = usuarios.find((u) => u.usuario === nombreUsuario);
+  const usuario = usuariosRepo.porUsuario(nombreUsuario);
   if (!usuario) return null;
-  const ok = bcrypt.compareSync(clave, usuario.claveHash);
+  const ok = bcrypt.compareSync(clave, usuario.clave_hash);
   if (!ok) return null;
 
   const token = generarToken(usuario);

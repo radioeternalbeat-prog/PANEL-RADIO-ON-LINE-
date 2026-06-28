@@ -4,8 +4,9 @@ Panel de control de streaming de radio online inspirado en **Centova Cast**. Per
 gestionar estaciones, oyentes, AutoDJ y estadísticas desde una interfaz web moderna,
 con un backend real (API REST + WebSocket) y autenticación JWT.
 
-> ⚠️ El backend usa un **almacén de datos en memoria** preparado para reemplazarse por una
-> base de datos y por la integración real con servidores **Icecast/SHOUTcast**.
+> El backend persiste los datos en una base **SQLite** (`server/data/panel.db`), creada y
+> sembrada automáticamente en el primer arranque. Está preparado para integrarse con
+> servidores **Icecast/SHOUTcast** en el futuro.
 
 ## ✨ Funcionalidades
 
@@ -42,8 +43,10 @@ iTunes funciona como **motor de gestión y base de datos de canciones**:
 
 **Backend**
 - [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/)
+- **SQLite** (vía `node:sqlite`, integrado en Node 22) para persistencia de datos
 - [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) (JWT) · [bcryptjs](https://github.com/dcodeIO/bcrypt.js) (hash de contraseñas)
 - [ws](https://github.com/websockets/ws) (WebSocket de estadísticas en vivo)
+- [plist](https://github.com/TooTallNate/plist.js) (parseo del `iTunes Library.xml`)
 
 ## 🚀 Cómo ejecutarlo
 
@@ -113,8 +116,11 @@ el header `Authorization: Bearer <token>`.
 │   └── main.jsx          # Punto de entrada (providers)
 └── server/               # Backend (Express)
     └── src/
-        ├── data/store.js # Almacén en memoria
-        ├── routes/       # auth, estaciones, estadisticas, autodj
+        ├── db/           # db.js (SQLite + esquema/seed) y repos.js (consultas)
+        ├── routes/       # auth, estaciones, estadisticas, autodj, itunes
+        ├── services/     # itunes.js (Search API + parseo Library.xml)
+        ├── live.js       # Datos transitorios (oyentes/hora, rotación)
+        ├── utils.js      # Utilidades (formato de duración)
         ├── auth.js       # JWT + middleware
         ├── realtime.js   # WebSocket
         └── index.js      # App + servidor HTTP
@@ -122,7 +128,7 @@ el header `Authorization: Bearer <token>`.
 
 ## 🗺️ Próximos pasos
 
-- Persistencia real con **PostgreSQL/SQLite** (reemplazar el store en memoria).
+- Subida de archivos de audio (MP3) para reproducir canciones completas en el AutoDJ.
 - Integración con **Icecast2 + Liquidsoap** para streaming y AutoDJ reales.
-- Subida de archivos de audio y gestión de usuarios/revendedores.
+- Gestión de usuarios/revendedores (multi-cuenta) sobre la base de datos.
 - Despliegue (Docker) y HTTPS.

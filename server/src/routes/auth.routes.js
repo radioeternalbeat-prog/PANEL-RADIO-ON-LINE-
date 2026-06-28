@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { login } from "../auth.js";
 import { requiereAuth } from "../auth.js";
-import { usuarios } from "../data/store.js";
+import { usuariosRepo } from "../db/repos.js";
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.post("/login", (req, res) => {
 
 // GET /api/auth/perfil  (requiere token)
 router.get("/perfil", requiereAuth, (req, res) => {
-  const u = usuarios.find((x) => x.id === req.usuario.id);
+  const u = usuariosRepo.porId(req.usuario.id);
   if (!u) return res.status(404).json({ mensaje: "Usuario no encontrado." });
   res.json({
     id: u.id,

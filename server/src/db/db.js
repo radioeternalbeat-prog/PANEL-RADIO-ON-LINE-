@@ -1,0 +1,176 @@
+// Capa de base de datos con SQLite integrado de Node (node:sqlite).
+// Crea el esquema y siembra datos iniciales la primera vez.
+
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import bcrypt from "bcryptjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Ubicación del archivo de base de datos (configurable por entorno).
+const DB_PATH = process.env.DB_PATH || resolve(__dirname, "../../data/panel.db");
+mkdirSync(dirname(DB_PATH), { recursive: true });
+
+export const db = new DatabaseSync(DB_PATH);
+db.exec("PRAGMA journal_mode = WAL;");
+db.exec("PRAGMA foreign_keys = ON;");
+
+function crearEsquema() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario TEXT UNIQUE NOT NULL,
+      nombre TEXT NOT NULL,
+      rol TEXT NOT NULL,
+      plan TEXT NOT NULL,
+      clave_hash TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS estaciones (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'offline',
+      servidor TEXT,
+      montaje TEXT,
+      host TEXT,
+      puerto INTEGER,
+      bitrate INTEGER,
+      formato TEXT,
+      oyentes_actuales INTEGER DEFAULT 0,
+      oyentes_maximos INTEGER DEFAULT 100,
+      pico_oyentes INTEGER DEFAULT 0,
+      cancion_actual TEXT DEFAULT '—',
+      autodj INTEGER DEFAULT 0,
+      uptime TEXT DEFAULT '—'
+    );
+
+    CREATE TABLE IF NOT EXISTS pistas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      artista TEXT,
+      album TEXT,
+      duracion TEXT,
+      genero TEXT,
+      fuente TEXT DEFAULT 'manual',
+      artwork TEXT,
+      preview_url TEXT,
+      itunes_id INTEGER,
+      ruta TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      tipo TEXT,
+      pistas INTEGER DEFAULT 0,
+      activa INTEGER DEFAULT 1,
+      peso INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS programacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      inicio TEXT,
+      fin TEXT,
+      playlist TEXT,
+      dias TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS oyentes_pais (
+      pais TEXT PRIMARY KEY,
+      oyentes INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS ancho_banda (
+      dia TEXT PRIMARY KEY,
+      orden INTEGER,
+      gb INTEGER DEFAULT 0
+    );
+  `);
+}
+
+function vacia(tabla) {
+  return db.prepare(`SELECT COUNT(*) AS n FROM ${tabla}`).get().n === 0;
+}
+
+function sembrar() {
+  // Usuario administrador por defecto.
+  if (vacia("usuarios")) {
+    db.prepare(
+      `INSERT INTO usuarios (usuario, nombre, rol, plan, clave_hash)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run("admin", "Administrador", "Administrador", "Profesional", bcrypt.hashSync("admin123", 10));
+  }
+
+  if (vacia("estaciones")) {
+    const ins = db.prepare(`
+      INSERT INTO estaciones
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato,
+         oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `);
+    const filas = [
+      ["rock-fm", "Rock FM Online", "online", "Icecast 2.4.4", "/rockfm", "stream.panelradio.online", 8000, 128, "MP3", 142, 250, 198, "Queen - Bohemian Rhapsody", 1, "5d 12h 34m"],
+      ["latino-mix", "Latino Mix", "online", "Icecast 2.4.4", "/latinomix", "stream.panelradio.online", 8010, 192, "AAC", 87, 150, 121, "Bad Bunny - Tití Me Preguntó", 1, "2d 03h 11m"],
+      ["jazz-lounge", "Jazz Lounge", "offline", "Icecast 2.4.4", "/jazz", "stream.panelradio.online", 8020, 128, "MP3", 0, 100, 64, "—", 0, "—"],
+    ];
+    for (const f of filas) ins.run(...f);
+  }
+
+  if (vacia("pistas")) {
+    const ins = db.prepare(`
+      INSERT INTO pistas (titulo, artista, album, duracion, genero, fuente)
+      VALUES (?,?,?,?,?,?)
+    `);
+    const filas = [
+      ["Bohemian Rhapsody", "Queen", "A Night at the Opera", "5:55", "Rock", "manual"],
+      ["Tití Me Preguntó", "Bad Bunny", "Un Verano Sin Ti", "4:03", "Reggaetón", "manual"],
+      ["Billie Jean", "Michael Jackson", "Thriller", "4:54", "Pop", "manual"],
+      ["Take Five", "Dave Brubeck", "Time Out", "5:24", "Jazz", "manual"],
+      ["La Tortura", "Shakira", "Fijación Oral", "3:32", "Latino", "manual"],
+      ["Smells Like Teen Spirit", "Nirvana", "Nevermind", "5:01", "Rock", "manual"],
+      ["Despacito", "Luis Fonsi", "Vida", "3:48", "Latino", "manual"],
+      ["So What", "Miles Davis", "Kind of Blue", "9:22", "Jazz", "manual"],
+    ];
+    for (const f of filas) ins.run(...f);
+  }
+
+  if (vacia("playlists")) {
+    const ins = db.prepare(`INSERT INTO playlists (nombre, tipo, pistas, activa, peso) VALUES (?,?,?,?,?)`);
+    const filas = [
+      ["Rotación General", "General", 248, 1, 70],
+      ["Éxitos del Momento", "Top", 35, 1, 20],
+      ["Clásicos", "Especial", 120, 0, 10],
+      ["Jingles e IDs", "Jingle", 18, 1, 0],
+    ];
+    for (const f of filas) ins.run(...f);
+  }
+
+  if (vacia("programacion")) {
+    const ins = db.prepare(`INSERT INTO programacion (nombre, inicio, fin, playlist, dias) VALUES (?,?,?,?,?)`);
+    const filas = [
+      ["Mañanas Activas", "06:00", "10:00", "Éxitos del Momento", "L-V"],
+      ["Mediodía", "12:00", "14:00", "Rotación General", "L-D"],
+      ["Noche Clásica", "22:00", "00:00", "Clásicos", "V-S"],
+    ];
+    for (const f of filas) ins.run(...f);
+  }
+
+  if (vacia("oyentes_pais")) {
+    const ins = db.prepare(`INSERT INTO oyentes_pais (pais, oyentes) VALUES (?,?)`);
+    for (const f of [["México", 78], ["España", 52], ["Argentina", 41], ["Colombia", 33], ["Chile", 18], ["Otros", 7]]) ins.run(...f);
+  }
+
+  if (vacia("ancho_banda")) {
+    const ins = db.prepare(`INSERT INTO ancho_banda (dia, orden, gb) VALUES (?,?,?)`);
+    const dias = [["Lun", 42], ["Mar", 38], ["Mié", 51], ["Jue", 47], ["Vie", 63], ["Sáb", 81], ["Dom", 74]];
+    dias.forEach(([dia, gb], i) => ins.run(dia, i, gb));
+  }
+}
+
+crearEsquema();
+sembrar();
+
+export default db;
