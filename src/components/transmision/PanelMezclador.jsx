@@ -57,10 +57,13 @@ export default function PanelMezclador() {
   const [master, setMaster] = useState(0.9);
   const [listo, setListo] = useState(false);
   const [micActivo, setMicActivo] = useState(false);
+  const [dispositivos, setDispositivos] = useState([]);
+  const [micDeviceId, setMicDeviceId] = useState("");
 
   const grafoRef = useRef(null);
   const medAref = useRef(null);
   const medBref = useRef(null);
+  const micLevelRef = useRef(null);
   const tapsRef = useRef({ A: [], B: [] });
   // Espejo del estado de cada deck para usarlo dentro del rAF (loops).
   const estadoRef = useRef({ A: deckA, B: deckB });
@@ -73,6 +76,23 @@ export default function PanelMezclador() {
       .biblioteca()
       .then((b) => setBiblioteca(b.filter((t) => t.previewUrl)))
       .catch(() => {});
+  }, []);
+
+  // Detecta los micrófonos conectados al sistema.
+  async function refrescarDispositivos() {
+    try {
+      const lista = await navigator.mediaDevices.enumerateDevices();
+      setDispositivos(lista.filter((d) => d.kind === "audioinput"));
+    } catch {
+      /* noop */
+    }
+  }
+
+  useEffect(() => {
+    refrescarDispositivos();
+    navigator.mediaDevices?.addEventListener?.("devicechange", refrescarDispositivos);
+    return () =>
+      navigator.mediaDevices?.removeEventListener?.("devicechange", refrescarDispositivos);
   }, []);
 
   function asegurarGrafo() {
@@ -188,6 +208,8 @@ export default function PanelMezclador() {
           const nivelMic = rms(g.micAnalyser, micBuf);
           const objetivo = nivelMic > 0.04 ? 0.25 : 1; // habla -> baja música
           g.duckGain.gain.setTargetAtTime(objetivo, g.ctx.currentTime, 0.08);
+          if (micLevelRef.current)
+            micLevelRef.current.style.width = `${Math.min(100, nivelMic * 260)}%`;
         }
       }
       raf = requestAnimationFrame(loop);
@@ -319,47 +341,65 @@ export default function PanelMezclador() {
   }
 
   // --- Micrófono / ducking ---
-  async function toggleMic() {
+  async function iniciarMic(deviceId) {
     const g = asegurarGrafo();
-    if (micActivo) {
+    if (g.ctx.state === "suspended") await g.ctx.resume();
+    // Cerrar stream anterior si lo hay.
+    if (g.mic) {
+      g.mic.mediaStream?.getTracks().forEach((t) => t.stop());
+      try { g.mic.disconnect(); } catch { /* noop */ }
+      g.mic = null;
+      g.micAnalyser = null;
+    }
+    const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const micSource = g.ctx.createMediaStreamSource(stream);
+    const an = g.ctx.createAnalyser();
+    an.fftSize = 512;
+    micSource.connect(an); // solo análisis (no a la salida, evita feedback)
+    g.mic = micSource;
+    g.micAnalyser = an;
+    setMicActivo(true);
+    refrescarDispositivos(); // ahora con etiquetas (ya hay permiso)
+  }
+
+  function detenerMic() {
+    const g = grafoRef.current;
+    if (g) {
       g.mic?.mediaStream?.getTracks().forEach((t) => t.stop());
       g.mic = null;
       g.micAnalyser = null;
       g.duckGain.gain.setTargetAtTime(1, g.ctx.currentTime, 0.1);
-      setMicActivo(false);
-      return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (g.ctx.state === "suspended") await g.ctx.resume();
-      const micSource = g.ctx.createMediaStreamSource(stream);
-      const an = g.ctx.createAnalyser();
-      an.fftSize = 512;
-      micSource.connect(an); // solo análisis (no a la salida, evita feedback)
-      g.mic = micSource;
-      g.micAnalyser = an;
-      setMicActivo(true);
-    } catch {
-      alert("No se pudo acceder al micrófono.");
+    if (micLevelRef.current) micLevelRef.current.style.width = "0%";
+    setMicActivo(false);
+  }
+
+  async function toggleMic() {
+    if (micActivo) {
+      detenerMic();
+    } else {
+      try {
+        await iniciarMic(micDeviceId);
+      } catch {
+        alert("No se pudo acceder al micrófono.");
+      }
+    }
+  }
+
+  async function cambiarMicro(id) {
+    setMicDeviceId(id);
+    if (micActivo) {
+      try { await iniciarMic(id); } catch { /* noop */ }
     }
   }
 
   return (
     <div className="card p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-muted">
-          <Sliders size={16} className="text-brand-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wide">Mezclador DJ</h3>
-          {!listo && <span className="text-[11px]">· pulsa play para activar el audio</span>}
-        </div>
-        <button
-          onClick={toggleMic}
-          className={`badge transition ${micActivo ? "bg-red-500/15 text-red-500" : "bg-surface2 text-muted hover:text-fg"}`}
-          title="Ducking: baja la música cuando hablas"
-        >
-          {micActivo ? <Mic size={12} /> : <MicOff size={12} />}
-          MIC {micActivo ? "ON" : "OFF"}
-        </button>
+      <div className="mb-4 flex items-center gap-2 text-muted">
+        <Sliders size={16} className="text-brand-500" />
+        <h3 className="text-sm font-semibold uppercase tracking-wide">Mezclador DJ</h3>
+        {!listo && <span className="text-[11px]">· pulsa play para activar el audio</span>}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_auto_1fr]">
@@ -370,6 +410,45 @@ export default function PanelMezclador() {
 
         {/* Centro */}
         <div className="flex flex-row items-center justify-center gap-6 lg:flex-col lg:px-2">
+          {/* Micrófono (ducking) */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={toggleMic}
+              className={`relative flex h-16 w-16 items-center justify-center rounded-full border-2 transition ${
+                micActivo
+                  ? "border-red-500 bg-red-500/15 text-red-500"
+                  : "border-line bg-surface2 text-muted hover:border-brand-500/50 hover:text-fg"
+              }`}
+              title={micActivo ? "Apagar micrófono" : "Encender micrófono (ducking al hablar)"}
+            >
+              {micActivo && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-red-500/20" />
+              )}
+              {micActivo ? <Mic size={26} /> : <MicOff size={26} />}
+            </button>
+            <span className="text-[11px] font-semibold uppercase text-muted">Micrófono</span>
+            {/* Nivel de voz */}
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line">
+              <div ref={micLevelRef} className="h-full rounded-full bg-red-500 transition-[width] duration-75" style={{ width: "0%" }} />
+            </div>
+            {/* Selector de micrófono */}
+            <select
+              value={micDeviceId}
+              onChange={(e) => cambiarMicro(e.target.value)}
+              className="input max-w-[160px] py-1 text-xs"
+              title="Elegir micrófono"
+            >
+              <option value="">Micrófono predeterminado</option>
+              {dispositivos.map((d, i) => (
+                <option key={d.deviceId || i} value={d.deviceId}>
+                  {d.label || `Micrófono ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden h-px w-full bg-line lg:block" />
+
           <div className="flex flex-col items-center gap-2">
             <span className="text-[11px] font-semibold uppercase text-muted">Master</span>
             <input type="range" min="0" max="1" step="0.01" value={master}
