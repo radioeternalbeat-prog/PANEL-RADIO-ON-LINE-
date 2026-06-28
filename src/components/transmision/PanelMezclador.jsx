@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "../../api/client";
 import { reportarNivel } from "../../audio/nivelBus";
+import { useMezclador } from "../../context/MezcladorContext";
 
 // Crossfade de igual potencia: x=0 -> todo A, x=1 -> todo B.
 function gananciasCross(x) {
@@ -71,6 +72,15 @@ export default function PanelMezclador() {
   estadoRef.current = { A: deckA, B: deckB };
 
   const setters = { A: setDeckA, B: setDeckB };
+
+  // Permite que otros paneles (ej. Cola) carguen pistas en los decks.
+  const { registrarCargador } = useMezclador();
+  const cargarRef = useRef(null);
+  useEffect(() => {
+    registrarCargador((id, pista) => cargarRef.current?.(id, pista));
+  }, [registrarCargador]);
+  // Mantener la referencia al último 'cargar' (definido más abajo, hoisted).
+  cargarRef.current = (id, pista) => cargar(id, pista);
 
   useEffect(() => {
     api

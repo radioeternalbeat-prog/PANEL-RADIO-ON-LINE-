@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "../../api/client";
 import { usePlayer } from "../../context/PlayerContext";
+import { useMezclador } from "../../context/MezcladorContext";
 
 function mezclar(arr) {
   const a = [...arr];
@@ -27,6 +28,7 @@ export default function PanelCola() {
   const [biblioteca, setBiblioteca] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
+  const { cargarEnDeck } = useMezclador();
   const {
     cola,
     indiceCola,
@@ -142,7 +144,7 @@ export default function PanelCola() {
         />
       </div>
 
-      <div className="flex-1 space-y-1 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
         {cargando ? (
           <div className="flex h-20 items-center justify-center">
             <Loader2 className="animate-spin text-brand-500" size={22} />
@@ -161,6 +163,25 @@ export default function PanelCola() {
                 <p className="truncate text-sm font-medium text-fg">{t.titulo}</p>
                 <p className="truncate text-xs text-muted">{t.artista}</p>
               </div>
+              {/* Cargar en deck A / B del mezclador */}
+              {t.previewUrl && (
+                <>
+                  <button
+                    onClick={() => cargarEnDeck("A", t)}
+                    className="rounded-md bg-brand-500/15 px-2 py-1 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30"
+                    title="Cargar en Deck A"
+                  >
+                    A
+                  </button>
+                  <button
+                    onClick={() => cargarEnDeck("B", t)}
+                    className="rounded-md bg-brand-500/15 px-2 py-1 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30"
+                    title="Cargar en Deck B"
+                  >
+                    B
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => encolar(t)}
                 className="rounded-md bg-surface2 p-1.5 text-muted transition hover:text-brand-500"
