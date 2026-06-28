@@ -57,6 +57,11 @@ export default function PanelCola() {
       (t.artista || "").toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  // Limita cuántas pistas se renderizan para no descuadrar el panel ni saturar el DOM.
+  const MAX_VISIBLE = 60;
+  const visibles = filtrada.slice(0, MAX_VISIBLE);
+  const ocultas = filtrada.length - visibles.length;
+
   // Carga una pista en el deck A/B; si no tiene audio, el mezclador busca su preview.
   async function aDeck(deckId, t) {
     const clave = `${deckId}-${t.id}`;
@@ -69,7 +74,7 @@ export default function PanelCola() {
   }
 
   return (
-    <div className="card flex h-full flex-col p-5">
+    <div className="card flex h-full max-h-[34rem] flex-col p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted">
           <ListMusic size={16} className="text-brand-500" />
@@ -155,6 +160,10 @@ export default function PanelCola() {
           onChange={(e) => setBusqueda(e.target.value)}
         />
       </div>
+      <p className="mb-1 text-[11px] text-muted">
+        {filtrada.length} {filtrada.length === 1 ? "canción" : "canciones"}
+        {ocultas > 0 && ` · mostrando ${MAX_VISIBLE}`}
+      </p>
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
         {cargando ? (
@@ -162,45 +171,52 @@ export default function PanelCola() {
             <Loader2 className="animate-spin text-brand-500" size={22} />
           </div>
         ) : (
-          filtrada.map((t) => (
-            <div key={t.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-surface2">
-                {t.artwork ? (
-                  <img src={t.artwork} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <Music2 size={14} className="text-muted" />
-                )}
+          <>
+            {visibles.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-surface2">
+                  {t.artwork ? (
+                    <img src={t.artwork} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Music2 size={14} className="text-muted" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{t.titulo}</p>
+                  <p className="truncate text-xs text-muted">{t.artista}</p>
+                </div>
+                {/* Cargar en deck A / B del mezclador (todas las pistas) */}
+                <button
+                  onClick={() => aDeck("A", t)}
+                  disabled={cargandoDeck === `A-${t.id}`}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
+                  title="Cargar en Deck A"
+                >
+                  {cargandoDeck === `A-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "A"}
+                </button>
+                <button
+                  onClick={() => aDeck("B", t)}
+                  disabled={cargandoDeck === `B-${t.id}`}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
+                  title="Cargar en Deck B"
+                >
+                  {cargandoDeck === `B-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "B"}
+                </button>
+                <button
+                  onClick={() => encolar(t)}
+                  className="rounded-md bg-surface2 p-1.5 text-muted transition hover:text-brand-500"
+                  title="Añadir a la cola"
+                >
+                  <Plus size={15} />
+                </button>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-fg">{t.titulo}</p>
-                <p className="truncate text-xs text-muted">{t.artista}</p>
-              </div>
-              {/* Cargar en deck A / B del mezclador (todas las pistas) */}
-              <button
-                onClick={() => aDeck("A", t)}
-                disabled={cargandoDeck === `A-${t.id}`}
-                className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
-                title="Cargar en Deck A"
-              >
-                {cargandoDeck === `A-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "A"}
-              </button>
-              <button
-                onClick={() => aDeck("B", t)}
-                disabled={cargandoDeck === `B-${t.id}`}
-                className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-500 transition hover:bg-brand-500/30 disabled:opacity-60"
-                title="Cargar en Deck B"
-              >
-                {cargandoDeck === `B-${t.id}` ? <Loader2 size={12} className="animate-spin" /> : "B"}
-              </button>
-              <button
-                onClick={() => encolar(t)}
-                className="rounded-md bg-surface2 p-1.5 text-muted transition hover:text-brand-500"
-                title="Añadir a la cola"
-              >
-                <Plus size={15} />
-              </button>
-            </div>
-          ))
+            ))}
+            {ocultas > 0 && (
+              <p className="py-2 text-center text-[11px] text-muted">
+                +{ocultas} más — usa el buscador para encontrarlas
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
