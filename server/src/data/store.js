@@ -146,3 +146,51 @@ let siguienteIdEstacion = 100;
 export function nuevoIdEstacion() {
   return `estacion-${siguienteIdEstacion++}`;
 }
+
+// --- Gestión de pistas de la biblioteca ---
+let siguienteIdPista = 1000;
+
+// Convierte milisegundos a "m:ss".
+export function msADuracion(ms) {
+  if (!ms || Number.isNaN(ms)) return "0:00";
+  const total = Math.round(ms / 1000);
+  const min = Math.floor(total / 60);
+  const seg = total % 60;
+  return `${min}:${String(seg).padStart(2, "0")}`;
+}
+
+// Agrega una pista a la biblioteca evitando duplicados por itunesId (si aplica).
+// Devuelve la pista agregada, o null si ya existía.
+export function agregarPista(datos) {
+  if (datos.itunesId) {
+    const yaExiste = biblioteca.some((t) => t.itunesId === datos.itunesId);
+    if (yaExiste) return null;
+  }
+  const pista = {
+    id: siguienteIdPista++,
+    titulo: datos.titulo || "Desconocido",
+    artista: datos.artista || "Desconocido",
+    album: datos.album || "",
+    duracion: datos.duracion || "0:00",
+    genero: datos.genero || "Sin género",
+    fuente: datos.fuente || "manual", // itunes | xml | manual
+    artwork: datos.artwork || null,
+    previewUrl: datos.previewUrl || null,
+    itunesId: datos.itunesId || null,
+    ruta: datos.ruta || null, // ruta del archivo local (import XML)
+  };
+  biblioteca.push(pista);
+  return pista;
+}
+
+// Agrega varias pistas; devuelve { agregadas, omitidas }.
+export function agregarPistas(lista = []) {
+  const agregadas = [];
+  let omitidas = 0;
+  for (const d of lista) {
+    const p = agregarPista(d);
+    if (p) agregadas.push(p);
+    else omitidas++;
+  }
+  return { agregadas, omitidas };
+}

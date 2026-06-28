@@ -78,4 +78,10 @@ export const api = {
   eliminarPista: (id) => request(`/autodj/biblioteca/${id}`, { metodo: "DELETE" }),
   playlists: () => request("/autodj/playlists"),
   programacion: () => request("/autodj/programacion"),
+
+  // iTunes
+  buscarItunes: (termino, limite = 25) =>
+    request(`/itunes/buscar?termino=${encodeURIComponent(termino)}&limite=${limite}`),
+  importarItunes: (pistas) => request("/itunes/importar", { metodo: "POST", cuerpo: { pistas } }),
+  importarLibraryXml: (xml) => request("/itunes/importar-xml", { metodo: "POST", cuerpo: { xml } }),
 };

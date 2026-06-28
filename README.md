@@ -14,10 +14,24 @@ con un backend real (API REST + WebSocket) y autenticación JWT.
   canción actual y controles de **iniciar/detener** (vía API) + escuchar.
 - **Estadísticas** — gráficas de oyentes (24h), distribución por país, ancho de banda
   semanal y detalle por estación.
-- **AutoDJ** — biblioteca de música (con búsqueda y borrado), playlists y programación.
+- **AutoDJ con iTunes** — busca canciones **reales** en el catálogo de Apple (con carátula y
+  preview de 30s reproducible), impórtalas a tu biblioteca, o sube tu `iTunes Library.xml`
+  para cargar tus canciones almacenadas locales.
 - **Configuración** — ajustes del servidor, calidad de audio, credenciales y URL del stream.
 - **Tiempo real** — oyentes y canción en reproducción se actualizan en vivo por **WebSocket**.
-- **Reproductor web** — mini reproductor global embebido en el panel.
+- **Reproductor web** — mini reproductor global que **reproduce los previews reales de iTunes**.
+
+## 🍎 Integración con iTunes
+
+iTunes funciona como **motor de gestión y base de datos de canciones**:
+
+1. **Catálogo de Apple (iTunes Search API)** — busca cualquier canción real y obtén
+   metadatos + carátula + un preview de audio de 30s que suena en el navegador. No requiere
+   API key. El backend hace de proxy en `GET /api/itunes/buscar`.
+2. **Importar tu biblioteca local** — en iTunes/Música: *Archivo → Biblioteca → Exportar
+   biblioteca…* genera un `Library.xml`. Súbelo desde el AutoDJ y el backend lo parsea
+   (formato *plist*) para importar tus canciones reales (título, artista, álbum, género,
+   duración y ruta del archivo).
 
 ## 🛠️ Stack
 
@@ -78,6 +92,9 @@ el header `Authorization: Bearer <token>`.
 | DELETE | `/autodj/biblioteca/:id` | Eliminar pista |
 | GET  | `/autodj/playlists` | Playlists |
 | GET  | `/autodj/programacion` | Programación de horarios |
+| GET  | `/itunes/buscar?termino=` | Busca canciones reales en el catálogo de Apple |
+| POST | `/itunes/importar` | Importa pistas seleccionadas de iTunes a la biblioteca |
+| POST | `/itunes/importar-xml` | Importa el `iTunes Library.xml` exportado |
 
 **WebSocket:** `ws://localhost:4000/ws` — emite un snapshot de oyentes/estado cada 3 s.
 

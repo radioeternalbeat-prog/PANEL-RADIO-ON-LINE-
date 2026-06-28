@@ -1,22 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Apple,
   CalendarClock,
   Clock,
   ListMusic,
   Loader2,
+  Music2,
   Music4,
+  Pause,
+  Play,
   Plus,
   Search,
   Trash2,
   Upload,
 } from "lucide-react";
 import { api } from "../api/client";
+import { usePlayer } from "../context/PlayerContext";
+import BuscadorItunes from "../components/BuscadorItunes";
 
 const tabs = [
   { id: "biblioteca", label: "Biblioteca", icon: Music4 },
   { id: "playlists", label: "Playlists", icon: ListMusic },
   { id: "programacion", label: "Programación", icon: CalendarClock },
 ];
+
+function BadgeFuente({ fuente }) {
+  const map = {
+    itunes: { txt: "iTunes", cls: "bg-pink-100 text-pink-700" },
+    xml: { txt: "Local", cls: "bg-indigo-100 text-indigo-700" },
+    manual: { txt: "Manual", cls: "bg-slate-100 text-slate-500" },
+  };
+  const s = map[fuente] || map.manual;
+  return <span className={`badge ${s.cls}`}>{s.txt}</span>;
+}
 
 export default function AutoDJ() {
   const [tab, setTab] = useState("biblioteca");
@@ -25,8 +41,17 @@ export default function AutoDJ() {
   const [playlists, setPlaylists] = useState([]);
   const [programacion, setProgramacion] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [mostrarItunes, setMostrarItunes] = useState(false);
+  const [importandoXml, setImportandoXml] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const inputXml = useRef(null);
+  const { reproducirPista, medioActual, reproduciendo, alternar } = usePlayer();
 
-  // Carga inicial.
+  async function cargarBiblioteca(q = "") {
+    const b = await api.biblioteca(q);
+    setBiblioteca(b);
+  }
+
   useEffect(() => {
     Promise.all([api.biblioteca(), api.playlists(), api.programacion()])
       .then(([b, p, pr]) => {
@@ -38,7 +63,6 @@ export default function AutoDJ() {
       .finally(() => setCargando(false));
   }, []);
 
-  // Búsqueda en biblioteca (con pequeño debounce).
   useEffect(() => {
     const t = setTimeout(() => {
       api.biblioteca(busqueda).then(setBiblioteca).catch(() => {});
@@ -55,6 +79,24 @@ export default function AutoDJ() {
     }
   }
 
+  async function onArchivoXml(e) {
+    const archivo = e.target.files?.[0];
+    e.target.value = ""; // permite re-subir el mismo archivo
+    if (!archivo) return;
+    setImportandoXml(true);
+    setAviso("");
+    try {
+      const xml = await archivo.text();
+      const r = await api.importarLibraryXml(xml);
+      setAviso(r.mensaje);
+      await cargarBiblioteca();
+    } catch (err) {
+      setAviso(err.message || "No se pudo importar el archivo.");
+    } finally {
+      setImportandoXml(false);
+    }
+  }
+
   if (cargando) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -68,17 +110,35 @@ export default function AutoDJ() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">AutoDJ</h1>
-          <p className="text-sm text-slate-500">Gestiona tu música, playlists y horarios de emisión.</p>
+          <p className="text-sm text-slate-500">
+            Gestiona tu música con iTunes como motor: busca canciones reales o importa tu biblioteca.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-ghost">
-            <Upload size={16} /> Subir música
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={inputXml}
+            type="file"
+            accept=".xml"
+            className="hidden"
+            onChange={onArchivoXml}
+          />
+          <button
+            className="btn-ghost"
+            onClick={() => inputXml.current?.click()}
+            disabled={importandoXml}
+          >
+            {importandoXml ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            Importar Library.xml
           </button>
-          <button className="btn-primary">
-            <Plus size={16} /> Nueva playlist
+          <button className="btn-primary" onClick={() => setMostrarItunes(true)}>
+            <Apple size={16} /> Buscar en iTunes
           </button>
         </div>
       </div>
+
+      {aviso && (
+        <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{aviso}</div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
@@ -103,7 +163,7 @@ export default function AutoDJ() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 className="input pl-9"
-                placeholder="Buscar canción o artista..."
+                placeholder="Buscar en tu biblioteca..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
@@ -114,38 +174,67 @@ export default function AutoDJ() {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">Título</th>
-                  <th className="px-5 py-3">Artista</th>
-                  <th className="hidden px-5 py-3 md:table-cell">Álbum</th>
-                  <th className="px-5 py-3">Género</th>
-                  <th className="px-5 py-3">Duración</th>
-                  <th className="px-5 py-3"></th>
+                  <th className="px-4 py-3"></th>
+                  <th className="px-3 py-3">Título</th>
+                  <th className="px-3 py-3">Artista</th>
+                  <th className="hidden px-3 py-3 lg:table-cell">Álbum</th>
+                  <th className="px-3 py-3">Género</th>
+                  <th className="px-3 py-3">Origen</th>
+                  <th className="px-3 py-3">Dur.</th>
+                  <th className="px-3 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {biblioteca.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-800">{t.titulo}</td>
-                    <td className="px-5 py-3 text-slate-600">{t.artista}</td>
-                    <td className="hidden px-5 py-3 text-slate-500 md:table-cell">{t.album}</td>
-                    <td className="px-5 py-3">
-                      <span className="badge bg-brand-50 text-brand-700">{t.genero}</span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Clock size={13} /> {t.duracion}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => eliminarPista(t.id)}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {biblioteca.map((t) => {
+                  const sonando =
+                    medioActual?.tipo === "pista" && medioActual?.id === t.id && reproduciendo;
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-2">
+                        <div className="relative h-10 w-10">
+                          {t.artwork ? (
+                            <img src={t.artwork} alt="" className="h-10 w-10 rounded-md object-cover" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-400">
+                              <Music2 size={16} />
+                            </div>
+                          )}
+                          {t.previewUrl && (
+                            <button
+                              onClick={() => (sonando ? alternar() : reproducirPista(t))}
+                              className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40 text-white opacity-0 transition hover:opacity-100"
+                              title="Escuchar preview"
+                            >
+                              {sonando ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{t.titulo}</td>
+                      <td className="px-3 py-2 text-slate-600">{t.artista}</td>
+                      <td className="hidden px-3 py-2 text-slate-500 lg:table-cell">{t.album}</td>
+                      <td className="px-3 py-2">
+                        <span className="badge bg-brand-50 text-brand-700">{t.genero}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <BadgeFuente fuente={t.fuente} />
+                      </td>
+                      <td className="px-3 py-2 text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Clock size={13} /> {t.duracion}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          onClick={() => eliminarPista(t.id)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -209,6 +298,13 @@ export default function AutoDJ() {
             </table>
           </div>
         </div>
+      )}
+
+      {mostrarItunes && (
+        <BuscadorItunes
+          onCerrar={() => setMostrarItunes(false)}
+          onImportado={() => cargarBiblioteca(busqueda)}
+        />
       )}
     </div>
   );

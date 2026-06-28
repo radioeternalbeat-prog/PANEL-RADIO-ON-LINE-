@@ -8,13 +8,15 @@ import authRoutes from "./routes/auth.routes.js";
 import estacionesRoutes from "./routes/estaciones.routes.js";
 import estadisticasRoutes from "./routes/estadisticas.routes.js";
 import autodjRoutes from "./routes/autodj.routes.js";
+import itunesRoutes from "./routes/itunes.routes.js";
 import { iniciarWebSocket } from "./realtime.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
-app.use(express.json());
+// Límite alto para permitir la importación de iTunes Library.xml (puede pesar varios MB).
+app.use(express.json({ limit: "50mb" }));
 
 // Salud del servicio (público)
 app.get("/api/health", (req, res) => {
@@ -28,6 +30,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/estaciones", requiereAuth, estacionesRoutes);
 app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
 app.use("/api/autodj", requiereAuth, autodjRoutes);
+app.use("/api/itunes", requiereAuth, itunesRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

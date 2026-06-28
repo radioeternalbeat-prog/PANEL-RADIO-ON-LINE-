@@ -1,23 +1,45 @@
-import { Pause, Play, Radio, Volume2, X } from "lucide-react";
+import { Music2, Pause, Play, Radio, Volume2, X } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 
 export default function MiniReproductor() {
-  const { estacionActual, reproduciendo, alternar, detener, volumen, setVolumen } = usePlayer();
+  const { medioActual, reproduciendo, alternar, detener, volumen, setVolumen, error } =
+    usePlayer();
 
-  if (!estacionActual) return null;
+  if (!medioActual) return null;
+
+  const esPista = medioActual.tipo === "pista";
 
   return (
     <div className="fixed bottom-4 left-1/2 z-40 w-[min(680px,92vw)] -translate-x-1/2">
       <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
-          <Radio size={20} />
-        </div>
+        {medioActual.artwork ? (
+          <img
+            src={medioActual.artwork}
+            alt=""
+            className="h-11 w-11 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
+            {esPista ? <Music2 size={20} /> : <Radio size={20} />}
+          </div>
+        )}
+
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800">{estacionActual.nombre}</p>
+          <p className="truncate text-sm font-semibold text-slate-800">{medioActual.titulo}</p>
           <p className="truncate text-xs text-slate-500">
-            {reproduciendo ? estacionActual.cancionActual : "En pausa"}
+            {error
+              ? error
+              : reproduciendo
+                ? medioActual.subtitulo || (esPista ? "Reproduciendo preview" : "En vivo")
+                : "En pausa"}
           </p>
         </div>
+
+        {esPista && (
+          <span className="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 sm:inline">
+            Preview 30s · iTunes
+          </span>
+        )}
 
         <button
           onClick={alternar}
