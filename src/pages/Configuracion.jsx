@@ -122,8 +122,8 @@ export default function Configuracion() {
         <div className="space-y-6">
           <div className="card p-5">
             <h2 className="mb-3 font-semibold text-fg">URL del stream</h2>
-            <div className="flex items-center gap-2 rounded-lg bg-[#0F1117] p-3">
-              <code className="flex-1 truncate text-xs text-accent-400">{urlStream}</code>
+            <div className="flex items-center gap-2 rounded-lg bg-[#121214] p-3">
+              <code className="flex-1 truncate text-xs text-brand-300">{urlStream}</code>
               <button type="button" onClick={() => navigator.clipboard?.writeText(urlStream)} className="text-slate-400 hover:text-white">
                 <Copy size={16} />
               </button>

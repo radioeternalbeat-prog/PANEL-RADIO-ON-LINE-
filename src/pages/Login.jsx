@@ -31,7 +31,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0F1117] p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#121214] p-4">
       {/* Resplandores de fondo */}
       <div className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-brand-600/30 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-accent-500/20 blur-3xl" />

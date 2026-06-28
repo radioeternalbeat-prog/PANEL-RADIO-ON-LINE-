@@ -7,23 +7,23 @@
 @layer base {
   /* Modo claro (por defecto) */
   :root {
-    --c-bg: 244 246 251; /* #F4F6FB */
+    --c-bg: 246 246 247; /* #F6F6F7 */
     --c-surface: 255 255 255; /* #FFFFFF */
-    --c-surface-2: 245 247 250; /* #F5F7FA */
-    --c-line: 226 232 240; /* #E2E8F0 */
-    --c-fg: 17 24 39; /* #111827 */
-    --c-muted: 100 116 139; /* #64748B */
+    --c-surface-2: 244 244 245; /* #F4F4F5 */
+    --c-line: 226 226 229; /* #E2E2E5 */
+    --c-fg: 24 24 27; /* #18181B casi negro */
+    --c-muted: 100 100 110; /* #64646E */
     color-scheme: light;
   }
 
-  /* Modo oscuro: "Medianoche Neón" */
+  /* Modo oscuro: antracita / negro (McLaren) */
   .dark {
-    --c-bg: 15 17 23; /* #0F1117 */
-    --c-surface: 24 27 36; /* #181B24 */
-    --c-surface-2: 31 35 46; /* #1F232E */
-    --c-line: 42 47 60; /* #2A2F3C */
-    --c-fg: 237 240 247; /* #EDF0F7 */
-    --c-muted: 148 158 178; /* #949EB2 */
+    --c-bg: 18 18 20; /* #121214 negro antracita */
+    --c-surface: 27 27 31; /* #1B1B1F antracita */
+    --c-surface-2: 36 36 41; /* #242429 */
+    --c-line: 52 52 59; /* #34343B */
+    --c-fg: 245 245 244; /* #F5F5F4 */
+    --c-muted: 160 160 168; /* #A0A0A8 */
     color-scheme: dark;
   }
 

@@ -18,7 +18,7 @@ import { api } from "../api/client";
 import { useRealtime } from "../hooks/useRealtime";
 import { useTheme } from "../context/ThemeContext";
 
-const COLORES = ["#7c5cfc", "#22d3ee", "#997afb", "#06b6d4", "#cdbdfe", "#64748b"];
+const COLORES = ["#ff8000", "#ffb020", "#ff9c2e", "#bf5e00", "#ffcb8f", "#71717a"];
 
 function MiniStat({ icon: Icon, etiqueta, valor, color }) {
   return (
@@ -44,13 +44,13 @@ export default function Estadisticas() {
   const { datos: realtime } = useRealtime();
   const { esOscuro } = useTheme();
 
-  const ejeColor = esOscuro ? "#949eb2" : "#94a3b8";
-  const gridColor = esOscuro ? "#2a2f3c" : "#eef2f7";
+  const ejeColor = esOscuro ? "#a0a0a8" : "#71717a";
+  const gridColor = esOscuro ? "#34343b" : "#ececee";
   const tooltipStyle = {
     borderRadius: 12,
-    border: `1px solid ${esOscuro ? "#2a2f3c" : "#e2e8f0"}`,
-    background: esOscuro ? "#181b24" : "#ffffff",
-    color: esOscuro ? "#edf0f7" : "#111827",
+    border: `1px solid ${esOscuro ? "#34343b" : "#e2e2e5"}`,
+    background: esOscuro ? "#1b1b1f" : "#ffffff",
+    color: esOscuro ? "#f5f5f4" : "#18181b",
     fontSize: 13,
   };
 
@@ -113,15 +113,15 @@ export default function Estadisticas() {
             <AreaChart data={porHora} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorOyentes" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7c5cfc" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#7c5cfc" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#ff8000" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#ff8000" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis dataKey="hora" tick={{ fontSize: 11, fill: ejeColor }} interval={2} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: ejeColor }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Area type="monotone" dataKey="oyentes" stroke="#7c5cfc" strokeWidth={2} fill="url(#colorOyentes)" />
+              <Area type="monotone" dataKey="oyentes" stroke="#ff8000" strokeWidth={2} fill="url(#colorOyentes)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -168,7 +168,7 @@ export default function Estadisticas() {
                 <XAxis dataKey="dia" tick={{ fontSize: 11, fill: ejeColor }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: ejeColor }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: gridColor }} />
-                <Bar dataKey="gb" fill="#22d3ee" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="gb" fill="#ffb020" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
