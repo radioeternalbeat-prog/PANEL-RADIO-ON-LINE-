@@ -59,10 +59,14 @@ export default function Layout() {
         }`}
       >
         <div className="flex h-16 items-center gap-2.5 border-b border-line px-5">
-          <img src="/logo.svg" alt="PANEL RADIO BEAT" className="h-9 w-9 rounded-lg" />
+          <img
+            src="/logo-icon.png"
+            alt="Eternal Beat Medios"
+            className="h-9 w-9 rounded-full object-cover ring-1 ring-line"
+          />
           <div className="leading-tight">
-            <p className="font-display text-sm font-extrabold tracking-tight text-fg">PANEL RADIO</p>
-            <p className="bg-brand-grad bg-clip-text text-[11px] font-bold text-transparent">BEAT</p>
+            <p className="font-display text-sm font-extrabold tracking-tight text-fg">ETERNAL BEAT</p>
+            <p className="bg-brand-grad bg-clip-text text-[11px] font-bold tracking-[0.2em] text-transparent">MEDIOS</p>
           </div>
           <button
             onClick={() => setAbierto(false)}

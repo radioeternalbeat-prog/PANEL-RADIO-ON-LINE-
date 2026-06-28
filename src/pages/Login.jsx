@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const { iniciarSesion } = useAuth();
+  const { esOscuro } = useTheme();
   const [usuario, setUsuario] = useState("admin");
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -39,11 +41,15 @@ export default function Login() {
       <div className="relative grid w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl md:grid-cols-2">
         {/* Panel lateral promocional */}
         <div className="relative hidden flex-col justify-between bg-brand-grad p-8 text-white md:flex">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="PANEL RADIO BEAT" className="h-11 w-11 rounded-xl bg-white/15 p-1" />
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo-icon.png"
+              alt="Eternal Beat Medios"
+              className="h-12 w-12 rounded-full object-cover ring-2 ring-white/40"
+            />
             <div className="leading-tight">
-              <p className="font-display font-extrabold">PANEL RADIO</p>
-              <p className="text-xs font-bold text-white/80">BEAT</p>
+              <p className="font-display font-extrabold">ETERNAL BEAT</p>
+              <p className="text-xs font-bold tracking-[0.2em] text-white/80">MEDIOS</p>
             </div>
           </div>
           <div>
@@ -60,14 +66,17 @@ export default function Login() {
               <li>• Estadísticas de oyentes en vivo</li>
             </ul>
           </div>
-          <p className="text-xs text-white/70">© {new Date().getFullYear()} Panel Radio Beat</p>
+          <p className="text-xs text-white/70">© {new Date().getFullYear()} Eternal Beat Medios</p>
         </div>
 
         {/* Formulario */}
         <div className="bg-surface p-8 sm:p-10">
-          <div className="mb-8 flex items-center gap-2.5 md:hidden">
-            <img src="/logo.svg" alt="PANEL RADIO BEAT" className="h-10 w-10 rounded-xl" />
-            <p className="font-display font-extrabold text-fg">PANEL RADIO BEAT</p>
+          <div className="mb-8 flex justify-center md:justify-start">
+            <img
+              src={esOscuro ? "/logo-horizontal-dark.png" : "/logo-horizontal-light.png"}
+              alt="Eternal Beat Medios"
+              className="h-14 object-contain"
+            />
           </div>
 
           <h1 className="font-display text-2xl font-bold text-fg">Iniciar sesión</h1>
