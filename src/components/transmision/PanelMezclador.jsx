@@ -74,13 +74,41 @@ export default function PanelMezclador() {
   const setters = { A: setDeckA, B: setDeckB };
 
   // Permite que otros paneles (ej. Cola) carguen pistas en los decks.
-  const { registrarCargador } = useMezclador();
+  const { registrarCargador, registrarPreparador, cue: cueMonitor, monitorVol, salidaId } = useMezclador();
   const cargarRef = useRef(null);
   useEffect(() => {
     registrarCargador((id, pista) => cargarRef.current?.(id, pista));
   }, [registrarCargador]);
   // Mantener la referencia al último 'cargar' (definido más abajo, hoisted).
   cargarRef.current = (id, pista) => cargar(id, pista);
+
+  // Registrar un "preparador" para que el panel de Audífonos pueda activar el motor.
+  useEffect(() => {
+    registrarPreparador(() => {
+      const g = asegurarGrafo();
+      if (g.ctx.state === "suspended") g.ctx.resume();
+    });
+  }, [registrarPreparador]);
+
+  // Aplicar estado del monitor (CUE A/B) a los nodos.
+  useEffect(() => {
+    const g = grafoRef.current;
+    if (!g) return;
+    g.A.cueGain.gain.value = cueMonitor.A ? 1 : 0;
+    g.B.cueGain.gain.value = cueMonitor.B ? 1 : 0;
+  }, [cueMonitor]);
+
+  useEffect(() => {
+    const g = grafoRef.current;
+    if (g?.monitorGain) g.monitorGain.gain.value = monitorVol;
+  }, [monitorVol]);
+
+  useEffect(() => {
+    const a = grafoRef.current?.monitorAudio;
+    if (a && typeof a.setSinkId === "function") {
+      a.setSinkId(salidaId).catch(() => {});
+    }
+  }, [salidaId]);
 
   useEffect(() => {
     api
@@ -118,6 +146,21 @@ export default function PanelMezclador() {
     masterGain.connect(masterAnalyser);
     masterGain.connect(ctx.destination);
 
+    // --- Bus de monitoreo (audífonos / CUE) con salida independiente ---
+    const monitorGain = ctx.createGain();
+    monitorGain.gain.value = 0.8;
+    let monitorAudio = null;
+    try {
+      const monitorDest = ctx.createMediaStreamDestination();
+      monitorGain.connect(monitorDest);
+      monitorAudio = new Audio();
+      monitorAudio.srcObject = monitorDest.stream;
+      monitorAudio.autoplay = true;
+      monitorAudio.play?.().catch(() => {});
+    } catch {
+      /* si no se soporta, el monitor no estará disponible */
+    }
+
     function crearDeck() {
       const audio = new Audio();
       audio.crossOrigin = "anonymous";
@@ -139,15 +182,20 @@ export default function PanelMezclador() {
       const crossGain = ctx.createGain();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
+      // CUE: toma la señal post-EQ (independiente del fader/crossfader) hacia el monitor.
+      const cueGain = ctx.createGain();
+      cueGain.gain.value = 0;
       source.connect(low);
       low.connect(mid);
       mid.connect(high);
       high.connect(filtro);
       filtro.connect(gain);
+      filtro.connect(cueGain);
+      cueGain.connect(monitorGain);
       gain.connect(analyser);
       analyser.connect(crossGain);
       crossGain.connect(duckGain);
-      return { audio, source, low, mid, high, filtro, gain, crossGain, analyser };
+      return { audio, source, low, mid, high, filtro, gain, crossGain, analyser, cueGain };
     }
 
     grafoRef.current = {
@@ -155,6 +203,8 @@ export default function PanelMezclador() {
       masterGain,
       duckGain,
       masterAnalyser,
+      monitorGain,
+      monitorAudio,
       A: crearDeck(),
       B: crearDeck(),
       mic: null,

@@ -6,6 +6,7 @@ import PanelReproductor from "../components/transmision/PanelReproductor";
 import PanelCola from "../components/transmision/PanelCola";
 import PanelReloj from "../components/transmision/PanelReloj";
 import PanelClima from "../components/transmision/PanelClima";
+import PanelAudifonos from "../components/transmision/PanelAudifonos";
 import PanelMensajes from "../components/transmision/PanelMensajes";
 import PanelSoundboard from "../components/transmision/PanelSoundboard";
 
@@ -33,6 +34,7 @@ export default function Transmision() {
           <div className="flex flex-col gap-5">
             <PanelReloj />
             <PanelClima />
+            <PanelAudifonos />
           </div>
         </div>
 
