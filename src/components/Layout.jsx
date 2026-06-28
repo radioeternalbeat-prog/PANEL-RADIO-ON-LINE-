@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { cuenta } from "../data/mockData";
+import { useAuth } from "../context/AuthContext";
 import MiniReproductor from "./MiniReproductor";
 
 const navItems = [
@@ -25,6 +26,13 @@ const navItems = [
 export default function Layout() {
   const [abierto, setAbierto] = useState(false);
   const navigate = useNavigate();
+  const { usuario, cerrarSesion } = useAuth();
+  const persona = usuario || cuenta;
+
+  function salir() {
+    cerrarSesion();
+    navigate("/login");
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -75,9 +83,9 @@ export default function Layout() {
         <div className="absolute inset-x-3 bottom-4">
           <div className="rounded-xl bg-white/5 p-3">
             <p className="text-xs text-slate-400">Plan actual</p>
-            <p className="text-sm font-semibold text-white">{cuenta.plan}</p>
+            <p className="text-sm font-semibold text-white">{persona.plan}</p>
             <button
-              onClick={() => navigate("/login")}
+              onClick={salir}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
             >
               <LogOut size={14} /> Cerrar sesión
@@ -117,11 +125,11 @@ export default function Layout() {
             </button>
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                {cuenta.nombre.charAt(0)}
+                {persona.nombre.charAt(0)}
               </div>
               <div className="hidden leading-tight sm:block">
-                <p className="text-sm font-semibold text-slate-800">{cuenta.nombre}</p>
-                <p className="text-xs text-slate-500">{cuenta.rol}</p>
+                <p className="text-sm font-semibold text-slate-800">{persona.nombre}</p>
+                <p className="text-xs text-slate-500">{persona.rol}</p>
               </div>
             </div>
           </div>

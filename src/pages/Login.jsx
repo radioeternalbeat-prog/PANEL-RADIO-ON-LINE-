@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Radio, User } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { iniciarSesion } = useAuth();
   const [usuario, setUsuario] = useState("admin");
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  function onSubmit(e) {
+  async function onSubmit(e) {
     e.preventDefault();
     setError("");
     if (!usuario || !clave) {
@@ -18,11 +20,14 @@ export default function Login() {
       return;
     }
     setCargando(true);
-    // Simulación de autenticación
-    setTimeout(() => {
-      setCargando(false);
+    try {
+      await iniciarSesion(usuario, clave);
       navigate("/");
-    }, 800);
+    } catch (err) {
+      setError(err.message || "No se pudo iniciar sesión.");
+    } finally {
+      setCargando(false);
+    }
   }
 
   return (
@@ -133,7 +138,8 @@ export default function Login() {
           </form>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            Demo: cualquier usuario/contraseña funciona.
+            Demo: usuario <span className="font-semibold text-slate-500">admin</span> · contraseña{" "}
+            <span className="font-semibold text-slate-500">admin123</span>
           </p>
         </div>
       </div>

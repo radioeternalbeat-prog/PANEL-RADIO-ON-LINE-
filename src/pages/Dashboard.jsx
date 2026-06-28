@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   Headphones,
+  Loader2,
   Music2,
   Pause,
   Play,
@@ -12,8 +14,10 @@ import {
   Square,
   TrendingUp,
   Users,
+  Wifi,
 } from "lucide-react";
-import { estaciones as estacionesIniciales } from "../data/mockData";
+import { api } from "../api/client";
+import { useRealtime } from "../hooks/useRealtime";
 import { usePlayer } from "../context/PlayerContext";
 
 function Estado({ estado }) {
@@ -49,43 +53,92 @@ function KpiCard({ icon: Icon, etiqueta, valor, detalle, color }) {
 }
 
 export default function Dashboard() {
-  const [estaciones, setEstaciones] = useState(estacionesIniciales);
+  const [estaciones, setEstaciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [accionando, setAccionando] = useState(null);
   const { reproducir, estacionActual, reproduciendo, alternar } = usePlayer();
+  const { datos: realtime, conectado } = useRealtime();
 
-  function toggleEstado(id) {
-    setEstaciones((prev) =>
-      prev.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              estado: e.estado === "online" ? "offline" : "online",
-              oyentesActuales: e.estado === "online" ? 0 : e.picoOyentes - 30,
-              uptime: e.estado === "online" ? "—" : "0d 0h 1m",
-            }
-          : e
-      )
-    );
+  async function cargar() {
+    try {
+      setError("");
+      const data = await api.estaciones();
+      setEstaciones(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
   }
 
-  const totalOyentes = estaciones.reduce((a, e) => a + e.oyentesActuales, 0);
-  const enLinea = estaciones.filter((e) => e.estado === "online").length;
-  const picoTotal = estaciones.reduce((a, e) => a + e.picoOyentes, 0);
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  // Mezclar datos en vivo del WebSocket sobre las estaciones cargadas.
+  const estacionesVivo = useMemo(() => {
+    if (!realtime?.estaciones) return estaciones;
+    const porId = Object.fromEntries(realtime.estaciones.map((e) => [e.id, e]));
+    return estaciones.map((e) => ({ ...e, ...(porId[e.id] || {}) }));
+  }, [estaciones, realtime]);
+
+  async function toggleEstado(est) {
+    setAccionando(est.id);
+    try {
+      const actualizada =
+        est.estado === "online"
+          ? await api.detenerEstacion(est.id)
+          : await api.iniciarEstacion(est.id);
+      setEstaciones((prev) => prev.map((e) => (e.id === est.id ? actualizada : e)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAccionando(null);
+    }
+  }
+
+  const totalOyentes = estacionesVivo.reduce((a, e) => a + e.oyentesActuales, 0);
+  const enLinea = estacionesVivo.filter((e) => e.estado === "online").length;
+  const picoTotal = estacionesVivo.reduce((a, e) => a + e.picoOyentes, 0);
+
+  if (cargando) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-brand-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Estaciones</h1>
-          <p className="text-sm text-slate-500">Resumen y control de tus transmisiones.</p>
+          <p className="flex items-center gap-2 text-sm text-slate-500">
+            Resumen y control de tus transmisiones.
+            <span
+              className={`badge ${conectado ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+              title="Conexión de datos en vivo"
+            >
+              <Wifi size={12} /> {conectado ? "En vivo" : "Sin conexión"}
+            </span>
+          </p>
         </div>
         <button className="btn-primary">
           <Plus size={18} /> Nueva estación
         </button>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={18} /> {error}
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={Radio} etiqueta="Estaciones activas" valor={`${enLinea}/${estaciones.length}`} detalle="En transmisión" color="bg-brand-100 text-brand-700" />
+        <KpiCard icon={Radio} etiqueta="Estaciones activas" valor={`${enLinea}/${estacionesVivo.length}`} detalle="En transmisión" color="bg-brand-100 text-brand-700" />
         <KpiCard icon={Headphones} etiqueta="Oyentes ahora" valor={totalOyentes} detalle="En todas las estaciones" color="bg-emerald-100 text-emerald-700" />
         <KpiCard icon={TrendingUp} etiqueta="Pico de oyentes" valor={picoTotal} detalle="Máximo histórico" color="bg-amber-100 text-amber-700" />
         <KpiCard icon={Signal} etiqueta="Estado del servidor" valor="Operativo" detalle="Icecast 2.4.4" color="bg-violet-100 text-violet-700" />
@@ -93,9 +146,10 @@ export default function Dashboard() {
 
       {/* Tarjetas de estación */}
       <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        {estaciones.map((e) => {
+        {estacionesVivo.map((e) => {
           const esActual = estacionActual?.id === e.id;
           const sonando = esActual && reproduciendo;
+          const ocupado = accionando === e.id;
           return (
             <div key={e.id} className="card flex flex-col overflow-hidden">
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
@@ -151,7 +205,7 @@ export default function Dashboard() {
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-brand-500"
+                      className="h-full rounded-full bg-brand-500 transition-all duration-500"
                       style={{ width: `${Math.min(100, (e.oyentesActuales / e.oyentesMaximos) * 100)}%` }}
                     />
                   </div>
@@ -165,12 +219,12 @@ export default function Dashboard() {
 
               <div className="mt-auto flex items-center gap-2 border-t border-slate-100 p-4">
                 {e.estado === "online" ? (
-                  <button onClick={() => toggleEstado(e.id)} className="btn-danger flex-1">
-                    <Square size={16} /> Detener
+                  <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-danger flex-1">
+                    {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} />} Detener
                   </button>
                 ) : (
-                  <button onClick={() => toggleEstado(e.id)} className="btn-success flex-1">
-                    <Play size={16} /> Iniciar
+                  <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-success flex-1">
+                    {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar
                   </button>
                 )}
                 <button

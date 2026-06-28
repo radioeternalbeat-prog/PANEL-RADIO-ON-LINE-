@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -5,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -13,13 +13,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Clock, Download, Globe2, Radio, Users } from "lucide-react";
-import {
-  anchoBandaPorDia,
-  estaciones,
-  oyentesPorHora,
-  oyentesPorPais,
-} from "../data/mockData";
+import { Clock, Download, Globe2, Loader2, Radio, Users } from "lucide-react";
+import { api } from "../api/client";
+import { useRealtime } from "../hooks/useRealtime";
 
 const COLORES = ["#1f60f1", "#3380fc", "#59a5ff", "#8ec6ff", "#bcdcff", "#cbd5e1"];
 
@@ -38,12 +34,43 @@ function MiniStat({ icon: Icon, etiqueta, valor, color }) {
 }
 
 export default function Estadisticas() {
-  const totalOyentes = estaciones.reduce((a, e) => a + e.oyentesActuales, 0);
-  const totalGb = anchoBandaPorDia.reduce((a, d) => a + d.gb, 0);
-  const promedio = Math.round(
-    oyentesPorHora.reduce((a, h) => a + h.oyentes, 0) / oyentesPorHora.length
-  );
-  const picoDia = Math.max(...oyentesPorHora.map((h) => h.oyentes));
+  const [resumen, setResumen] = useState(null);
+  const [porHora, setPorHora] = useState([]);
+  const [porPais, setPorPais] = useState([]);
+  const [anchoBanda, setAnchoBanda] = useState([]);
+  const [estaciones, setEstaciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const { datos: realtime } = useRealtime();
+
+  useEffect(() => {
+    Promise.all([
+      api.resumen(),
+      api.oyentesPorHora(),
+      api.oyentesPorPais(),
+      api.anchoBanda(),
+      api.estaciones(),
+    ])
+      .then(([r, h, p, b, e]) => {
+        setResumen(r);
+        setPorHora(h);
+        setPorPais(p);
+        setAnchoBanda(b);
+        setEstaciones(e);
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  // Oyentes en vivo desde el WebSocket sobreescriben el total mostrado.
+  const totalOyentes = realtime?.totalOyentes ?? resumen?.totalOyentes ?? 0;
+
+  if (cargando) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-brand-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -59,9 +86,9 @@ export default function Estadisticas() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MiniStat icon={Users} etiqueta="Oyentes ahora" valor={totalOyentes} color="bg-brand-100 text-brand-700" />
-        <MiniStat icon={Clock} etiqueta="Promedio (24h)" valor={promedio} color="bg-emerald-100 text-emerald-700" />
-        <MiniStat icon={Radio} etiqueta="Pico del día" valor={picoDia} color="bg-amber-100 text-amber-700" />
-        <MiniStat icon={Globe2} etiqueta="Ancho banda (sem)" valor={`${totalGb} GB`} color="bg-violet-100 text-violet-700" />
+        <MiniStat icon={Clock} etiqueta="Promedio (24h)" valor={resumen?.promedio ?? 0} color="bg-emerald-100 text-emerald-700" />
+        <MiniStat icon={Radio} etiqueta="Pico del día" valor={resumen?.picoDia ?? 0} color="bg-amber-100 text-amber-700" />
+        <MiniStat icon={Globe2} etiqueta="Ancho banda (sem)" valor={`${resumen?.totalGb ?? 0} GB`} color="bg-violet-100 text-violet-700" />
       </div>
 
       {/* Oyentes por hora */}
@@ -72,7 +99,7 @@ export default function Estadisticas() {
         </div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={oyentesPorHora} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <AreaChart data={porHora} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorOyentes" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#1f60f1" stopOpacity={0.35} />
@@ -97,8 +124,8 @@ export default function Estadisticas() {
             <div className="h-56 w-full sm:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={oyentesPorPais} dataKey="oyentes" nameKey="pais" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
-                    {oyentesPorPais.map((_, i) => (
+                  <Pie data={porPais} dataKey="oyentes" nameKey="pais" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                    {porPais.map((_, i) => (
                       <Cell key={i} fill={COLORES[i % COLORES.length]} />
                     ))}
                   </Pie>
@@ -107,7 +134,7 @@ export default function Estadisticas() {
               </ResponsiveContainer>
             </div>
             <div className="w-full space-y-2 sm:w-1/2">
-              {oyentesPorPais.map((p, i) => (
+              {porPais.map((p, i) => (
                 <div key={p.pais} className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-slate-600">
                     <span className="h-3 w-3 rounded-full" style={{ background: COLORES[i % COLORES.length] }} />
@@ -125,7 +152,7 @@ export default function Estadisticas() {
           <h2 className="mb-4 font-semibold text-slate-800">Ancho de banda por día (GB)</h2>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={anchoBandaPorDia} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+              <BarChart data={anchoBanda} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
                 <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />

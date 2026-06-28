@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarClock,
   Clock,
   ListMusic,
+  Loader2,
   Music4,
   Plus,
   Search,
   Trash2,
   Upload,
 } from "lucide-react";
-import { biblioteca, playlists, programacion } from "../data/mockData";
+import { api } from "../api/client";
 
 const tabs = [
   { id: "biblioteca", label: "Biblioteca", icon: Music4 },
@@ -20,12 +21,47 @@ const tabs = [
 export default function AutoDJ() {
   const [tab, setTab] = useState("biblioteca");
   const [busqueda, setBusqueda] = useState("");
+  const [biblioteca, setBiblioteca] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [programacion, setProgramacion] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const pistas = biblioteca.filter(
-    (t) =>
-      t.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      t.artista.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  // Carga inicial.
+  useEffect(() => {
+    Promise.all([api.biblioteca(), api.playlists(), api.programacion()])
+      .then(([b, p, pr]) => {
+        setBiblioteca(b);
+        setPlaylists(p);
+        setProgramacion(pr);
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  // Búsqueda en biblioteca (con pequeño debounce).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      api.biblioteca(busqueda).then(setBiblioteca).catch(() => {});
+    }, 300);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+
+  async function eliminarPista(id) {
+    try {
+      await api.eliminarPista(id);
+      setBiblioteca((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      /* noop */
+    }
+  }
+
+  if (cargando) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-brand-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -72,7 +108,7 @@ export default function AutoDJ() {
                 onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
-            <span className="text-sm text-slate-500">{pistas.length} pistas</span>
+            <span className="text-sm text-slate-500">{biblioteca.length} pistas</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -87,7 +123,7 @@ export default function AutoDJ() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {pistas.map((t) => (
+                {biblioteca.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-800">{t.titulo}</td>
                     <td className="px-5 py-3 text-slate-600">{t.artista}</td>
@@ -101,7 +137,10 @@ export default function AutoDJ() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500">
+                      <button
+                        onClick={() => eliminarPista(t.id)}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </td>

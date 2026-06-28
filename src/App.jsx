@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import RutaProtegida from "./components/RutaProtegida";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Estadisticas from "./pages/Estadisticas";
@@ -10,7 +11,14 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Layout />}>
+      <Route
+        path="/"
+        element={
+          <RutaProtegida>
+            <Layout />
+          </RutaProtegida>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="estadisticas" element={<Estadisticas />} />
         <Route path="autodj" element={<AutoDJ />} />
