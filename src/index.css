@@ -1,38 +1,71 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
+@layer base {
+  /* Modo claro (por defecto) */
+  :root {
+    --c-bg: 244 246 251; /* #F4F6FB */
+    --c-surface: 255 255 255; /* #FFFFFF */
+    --c-surface-2: 245 247 250; /* #F5F7FA */
+    --c-line: 226 232 240; /* #E2E8F0 */
+    --c-fg: 17 24 39; /* #111827 */
+    --c-muted: 100 116 139; /* #64748B */
+    color-scheme: light;
+  }
 
-html,
-body,
-#root {
-  height: 100%;
-}
+  /* Modo oscuro: "Medianoche Neón" */
+  .dark {
+    --c-bg: 15 17 23; /* #0F1117 */
+    --c-surface: 24 27 36; /* #181B24 */
+    --c-surface-2: 31 35 46; /* #1F232E */
+    --c-line: 42 47 60; /* #2A2F3C */
+    --c-fg: 237 240 247; /* #EDF0F7 */
+    --c-muted: 148 158 178; /* #949EB2 */
+    color-scheme: dark;
+  }
 
-body {
-  margin: 0;
-  background-color: #f4f6fb;
-  font-family: "Inter", system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    @apply bg-bg text-fg;
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: "Sora", "Inter", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-card;
+    @apply rounded-2xl border border-line bg-surface shadow-card;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn bg-brand-600 text-white hover:bg-brand-500 shadow-sm;
+  }
+  .btn-accent {
+    @apply btn bg-accent-500 text-white hover:bg-accent-600;
   }
   .btn-ghost {
-    @apply btn bg-slate-100 text-slate-700 hover:bg-slate-200;
+    @apply btn border border-line bg-surface2 text-fg hover:border-brand-500/40;
   }
   .btn-danger {
     @apply btn bg-red-500 text-white hover:bg-red-600;
@@ -41,10 +74,10 @@ body {
     @apply btn bg-emerald-500 text-white hover:bg-emerald-600;
   }
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-line bg-surface2 px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-600;
+    @apply mb-1 block text-sm font-medium text-muted;
   }
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;

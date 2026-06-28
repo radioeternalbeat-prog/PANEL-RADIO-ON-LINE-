@@ -1,5 +1,4 @@
-// Datos simulados para PANEL RADIO ONLINE
-// Reemplazar por llamadas reales a la API (Icecast/SHOUTcast) en el futuro.
+// Datos simulados / constantes de UI para PANEL RADIO BEAT.
 
 export const cuenta = {
   usuario: "admin",

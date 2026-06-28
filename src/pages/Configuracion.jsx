@@ -44,8 +44,8 @@ export default function Configuracion() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Configuración</h1>
-        <p className="text-sm text-slate-500">Ajustes del servidor de streaming y la estación.</p>
+        <h1 className="text-2xl font-bold text-fg">Configuración</h1>
+        <p className="text-sm text-muted">Ajustes del servidor de streaming y la estación.</p>
       </div>
 
       <form onSubmit={guardar} className="grid gap-6 lg:grid-cols-3">
@@ -53,8 +53,8 @@ export default function Configuracion() {
         <div className="space-y-6 lg:col-span-2">
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Server size={18} className="text-brand-600" />
-              <h2 className="font-semibold text-slate-800">Datos del servidor</h2>
+              <Server size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Datos del servidor</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Nombre de la estación">
@@ -85,8 +85,8 @@ export default function Configuracion() {
 
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Sliders size={18} className="text-brand-600" />
-              <h2 className="font-semibold text-slate-800">Calidad de audio</h2>
+              <Sliders size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Calidad de audio</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Formato">
@@ -106,13 +106,13 @@ export default function Configuracion() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <label className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-                <span className="text-sm font-medium text-slate-700">Activar AutoDJ</span>
-                <input type="checkbox" className="h-5 w-9 cursor-pointer appearance-none rounded-full bg-slate-300 transition checked:bg-brand-600" checked={cfg.autodj} onChange={(ev) => set("autodj", ev.target.checked)} />
+              <label className="flex items-center justify-between rounded-lg bg-surface2 px-4 py-3">
+                <span className="text-sm font-medium text-fg">Activar AutoDJ</span>
+                <input type="checkbox" className="h-5 w-9 cursor-pointer accent-brand-500" checked={cfg.autodj} onChange={(ev) => set("autodj", ev.target.checked)} />
               </label>
-              <label className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-                <span className="text-sm font-medium text-slate-700">Listar en directorios públicos</span>
-                <input type="checkbox" className="h-5 w-9 cursor-pointer appearance-none rounded-full bg-slate-300 transition checked:bg-brand-600" checked={cfg.publica} onChange={(ev) => set("publica", ev.target.checked)} />
+              <label className="flex items-center justify-between rounded-lg bg-surface2 px-4 py-3">
+                <span className="text-sm font-medium text-fg">Listar en directorios públicos</span>
+                <input type="checkbox" className="h-5 w-9 cursor-pointer accent-brand-500" checked={cfg.publica} onChange={(ev) => set("publica", ev.target.checked)} />
               </label>
             </div>
           </div>
@@ -121,20 +121,20 @@ export default function Configuracion() {
         {/* Columna lateral */}
         <div className="space-y-6">
           <div className="card p-5">
-            <h2 className="mb-3 font-semibold text-slate-800">URL del stream</h2>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-900 p-3">
-              <code className="flex-1 truncate text-xs text-emerald-300">{urlStream}</code>
+            <h2 className="mb-3 font-semibold text-fg">URL del stream</h2>
+            <div className="flex items-center gap-2 rounded-lg bg-[#0F1117] p-3">
+              <code className="flex-1 truncate text-xs text-accent-400">{urlStream}</code>
               <button type="button" onClick={() => navigator.clipboard?.writeText(urlStream)} className="text-slate-400 hover:text-white">
                 <Copy size={16} />
               </button>
             </div>
-            <p className="mt-2 text-xs text-slate-400">Comparte esta URL para que los oyentes sintonicen tu radio.</p>
+            <p className="mt-2 text-xs text-muted">Comparte esta URL para que los oyentes sintonicen tu radio.</p>
           </div>
 
           <div className="card p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Users size={18} className="text-brand-600" />
-              <h2 className="font-semibold text-slate-800">Credenciales</h2>
+              <Users size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Credenciales</h2>
             </div>
             <div className="space-y-3">
               <Campo label="Usuario fuente (DJ)">
@@ -153,7 +153,7 @@ export default function Configuracion() {
             <Save size={18} /> Guardar cambios
           </button>
           {guardado && (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-sm font-medium text-emerald-700">
+            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
               ✓ Configuración guardada correctamente
             </p>
           )}

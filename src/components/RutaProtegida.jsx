@@ -7,8 +7,8 @@ export default function RutaProtegida({ children }) {
 
   if (cargando) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="animate-spin text-brand-600" size={32} />
+      <div className="flex h-screen items-center justify-center bg-bg">
+        <Loader2 className="animate-spin text-brand-500" size={32} />
       </div>
     );
   }

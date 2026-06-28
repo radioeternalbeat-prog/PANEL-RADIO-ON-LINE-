@@ -69,29 +69,29 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="my-8 w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-3xl rounded-2xl border border-line bg-surface shadow-2xl">
         {/* Cabecera */}
-        <div className="flex items-center justify-between border-b border-slate-100 p-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
+        <div className="flex items-center justify-between border-b border-line p-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-grad text-white">
               <Music2 size={18} />
             </div>
             <div>
-              <h2 className="font-bold text-slate-800">Buscar en iTunes</h2>
-              <p className="text-xs text-slate-500">Catálogo de Apple · canciones reales con preview</p>
+              <h2 className="font-semibold text-fg">Buscar en iTunes</h2>
+              <p className="text-xs text-muted">Catálogo de Apple · canciones reales con preview</p>
             </div>
           </div>
-          <button onClick={onCerrar} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+          <button onClick={onCerrar} className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-fg">
             <X size={20} />
           </button>
         </div>
 
         {/* Buscador */}
-        <div className="border-b border-slate-100 p-5">
+        <div className="border-b border-line p-5">
           <form onSubmit={buscar} className="flex gap-2">
             <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 autoFocus
                 className="input pl-9"
@@ -105,14 +105,14 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
               Buscar
             </button>
           </form>
-          {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-          {aviso && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{aviso}</p>}
+          {error && <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
+          {aviso && <p className="mt-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-500 dark:text-emerald-400">{aviso}</p>}
         </div>
 
         {/* Resultados */}
         <div className="max-h-[45vh] overflow-y-auto p-3">
           {resultados.length === 0 && !buscando && (
-            <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted">
               <Music2 size={36} />
               <p className="text-sm">Busca canciones para agregarlas a tu biblioteca.</p>
             </div>
@@ -129,21 +129,21 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
                 <div
                   key={p.itunesId}
                   className={`flex items-center gap-3 rounded-xl p-2 transition ${
-                    sel ? "bg-brand-50" : "hover:bg-slate-50"
+                    sel ? "bg-brand-500/10" : "hover:bg-surface2"
                   }`}
                 >
                   <div className="relative h-12 w-12 shrink-0">
                     {p.artwork ? (
                       <img src={p.artwork} alt="" className="h-12 w-12 rounded-lg object-cover" />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface2 text-muted">
                         <Music2 size={18} />
                       </div>
                     )}
                     {p.previewUrl && (
                       <button
                         onClick={() => (sonando ? alternar() : reproducirPista(p))}
-                        className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 text-white opacity-0 transition hover:opacity-100"
+                        className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 text-white opacity-0 transition hover:opacity-100"
                         title="Escuchar preview"
                       >
                         {sonando ? <Pause size={18} /> : <Play size={18} />}
@@ -152,14 +152,14 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-800">{p.titulo}</p>
-                    <p className="truncate text-xs text-slate-500">
+                    <p className="truncate text-sm font-semibold text-fg">{p.titulo}</p>
+                    <p className="truncate text-xs text-muted">
                       {p.artista} · {p.album}
                     </p>
                   </div>
 
-                  <span className="hidden text-xs text-slate-400 sm:block">{p.duracion}</span>
-                  <span className="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 md:block">
+                  <span className="hidden text-xs text-muted sm:block">{p.duracion}</span>
+                  <span className="hidden rounded-full border border-line bg-surface2 px-2 py-0.5 text-[11px] text-muted md:block">
                     {p.genero}
                   </span>
 
@@ -168,7 +168,7 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
                     className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                       sel
                         ? "bg-brand-600 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        : "border border-line bg-surface2 text-muted hover:text-fg"
                     }`}
                     title={sel ? "Quitar de la selección" : "Agregar a la selección"}
                   >
@@ -181,10 +181,8 @@ export default function BuscadorItunes({ onCerrar, onImportado }) {
         </div>
 
         {/* Pie */}
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 p-4">
-          <p className="text-sm text-slate-500">
-            {seleccionadas.length} seleccionada(s)
-          </p>
+        <div className="flex items-center justify-between gap-3 border-t border-line p-4">
+          <p className="text-sm text-muted">{seleccionadas.length} seleccionada(s)</p>
           <div className="flex gap-2">
             <button onClick={onCerrar} className="btn-ghost">
               Cerrar

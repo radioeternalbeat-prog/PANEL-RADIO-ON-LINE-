@@ -7,13 +7,15 @@ import {
   ListMusic,
   LogOut,
   Menu,
-  Radio,
+  Moon,
   Search,
   Settings,
+  Sun,
   X,
 } from "lucide-react";
 import { cuenta } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import MiniReproductor from "./MiniReproductor";
 
 const navItems = [
@@ -22,6 +24,20 @@ const navItems = [
   { to: "/autodj", label: "AutoDJ", icon: ListMusic },
   { to: "/configuracion", label: "Configuración", icon: Settings },
 ];
+
+function BotonTema() {
+  const { esOscuro, alternarTema } = useTheme();
+  return (
+    <button
+      onClick={alternarTema}
+      className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface2 text-muted transition hover:text-fg"
+      title={esOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      aria-label="Cambiar tema"
+    >
+      {esOscuro ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  );
+}
 
 export default function Layout() {
   const [abierto, setAbierto] = useState(false);
@@ -35,24 +51,22 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-bg">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-ink-900 text-slate-300 transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-line bg-surface transition-transform duration-200 lg:static lg:translate-x-0 ${
           abierto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-16 items-center gap-2 border-b border-white/10 px-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-            <Radio size={20} />
-          </div>
+        <div className="flex h-16 items-center gap-2.5 border-b border-line px-5">
+          <img src="/logo.svg" alt="PANEL RADIO BEAT" className="h-9 w-9 rounded-lg" />
           <div className="leading-tight">
-            <p className="text-sm font-extrabold tracking-tight text-white">PANEL RADIO</p>
-            <p className="text-[11px] font-medium text-brand-300">ONLINE</p>
+            <p className="font-display text-sm font-extrabold tracking-tight text-fg">PANEL RADIO</p>
+            <p className="bg-brand-grad bg-clip-text text-[11px] font-bold text-transparent">BEAT</p>
           </div>
           <button
             onClick={() => setAbierto(false)}
-            className="ml-auto text-slate-400 lg:hidden"
+            className="ml-auto text-muted lg:hidden"
             aria-label="Cerrar menú"
           >
             <X size={20} />
@@ -67,10 +81,10 @@ export default function Layout() {
               end={end}
               onClick={() => setAbierto(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
-                    ? "bg-brand-600 text-white"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-muted hover:bg-surface2 hover:text-fg"
                 }`
               }
             >
@@ -81,12 +95,12 @@ export default function Layout() {
         </nav>
 
         <div className="absolute inset-x-3 bottom-4">
-          <div className="rounded-xl bg-white/5 p-3">
-            <p className="text-xs text-slate-400">Plan actual</p>
-            <p className="text-sm font-semibold text-white">{persona.plan}</p>
+          <div className="rounded-xl border border-line bg-surface2 p-3">
+            <p className="text-xs text-muted">Plan actual</p>
+            <p className="text-sm font-semibold text-fg">{persona.plan}</p>
             <button
               onClick={salir}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-surface px-3 py-2 text-xs font-semibold text-fg transition hover:bg-brand-600 hover:text-white"
             >
               <LogOut size={14} /> Cerrar sesión
             </button>
@@ -97,39 +111,40 @@ export default function Layout() {
       {/* Overlay móvil */}
       {abierto && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
           onClick={() => setAbierto(false)}
         />
       )}
 
       {/* Contenido */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 lg:px-6">
+        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-line bg-surface px-4 lg:px-6">
           <button
             onClick={() => setAbierto(true)}
-            className="text-slate-600 lg:hidden"
+            className="text-muted lg:hidden"
             aria-label="Abrir menú"
           >
             <Menu size={22} />
           </button>
 
           <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input className="input pl-9" placeholder="Buscar estación, canción o cliente..." />
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
-            <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <BotonTema />
+            <button className="relative rounded-lg p-2 text-muted hover:bg-surface2 hover:text-fg">
               <Bell size={20} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent-400" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-grad text-sm font-bold text-white">
                 {persona.nombre.charAt(0)}
               </div>
               <div className="hidden leading-tight sm:block">
-                <p className="text-sm font-semibold text-slate-800">{persona.nombre}</p>
-                <p className="text-xs text-slate-500">{persona.rol}</p>
+                <p className="text-sm font-semibold text-fg">{persona.nombre}</p>
+                <p className="text-xs text-muted">{persona.rol}</p>
               </div>
             </div>
           </div>

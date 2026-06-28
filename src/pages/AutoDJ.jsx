@@ -26,9 +26,9 @@ const tabs = [
 
 function BadgeFuente({ fuente }) {
   const map = {
-    itunes: { txt: "iTunes", cls: "bg-pink-100 text-pink-700" },
-    xml: { txt: "Local", cls: "bg-indigo-100 text-indigo-700" },
-    manual: { txt: "Manual", cls: "bg-slate-100 text-slate-500" },
+    itunes: { txt: "iTunes", cls: "bg-brand-500/15 text-brand-500" },
+    xml: { txt: "Local", cls: "bg-accent-500/15 text-accent-500" },
+    manual: { txt: "Manual", cls: "bg-surface2 text-muted" },
   };
   const s = map[fuente] || map.manual;
   return <span className={`badge ${s.cls}`}>{s.txt}</span>;
@@ -81,7 +81,7 @@ export default function AutoDJ() {
 
   async function onArchivoXml(e) {
     const archivo = e.target.files?.[0];
-    e.target.value = ""; // permite re-subir el mismo archivo
+    e.target.value = "";
     if (!archivo) return;
     setImportandoXml(true);
     setAviso("");
@@ -100,7 +100,7 @@ export default function AutoDJ() {
   if (cargando) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-brand-600" size={32} />
+        <Loader2 className="animate-spin text-brand-500" size={32} />
       </div>
     );
   }
@@ -109,24 +109,14 @@ export default function AutoDJ() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">AutoDJ</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-fg">AutoDJ</h1>
+          <p className="text-sm text-muted">
             Gestiona tu música con iTunes como motor: busca canciones reales o importa tu biblioteca.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <input
-            ref={inputXml}
-            type="file"
-            accept=".xml"
-            className="hidden"
-            onChange={onArchivoXml}
-          />
-          <button
-            className="btn-ghost"
-            onClick={() => inputXml.current?.click()}
-            disabled={importandoXml}
-          >
+          <input ref={inputXml} type="file" accept=".xml" className="hidden" onChange={onArchivoXml} />
+          <button className="btn-ghost" onClick={() => inputXml.current?.click()} disabled={importandoXml}>
             {importandoXml ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
             Importar Library.xml
           </button>
@@ -137,17 +127,17 @@ export default function AutoDJ() {
       </div>
 
       {aviso && (
-        <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{aviso}</div>
+        <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">{aviso}</div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
+      <div className="flex gap-1 rounded-xl border border-line bg-surface p-1">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-              tab === id ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"
+              tab === id ? "bg-brand-600 text-white" : "text-muted hover:bg-surface2 hover:text-fg"
             }`}
           >
             <Icon size={16} /> {label}
@@ -158,9 +148,9 @@ export default function AutoDJ() {
       {/* Biblioteca */}
       {tab === "biblioteca" && (
         <div className="card overflow-hidden">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+          <div className="flex items-center justify-between gap-3 border-b border-line p-4">
             <div className="relative max-w-xs flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 className="input pl-9"
                 placeholder="Buscar en tu biblioteca..."
@@ -168,11 +158,11 @@ export default function AutoDJ() {
                 onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
-            <span className="text-sm text-slate-500">{biblioteca.length} pistas</span>
+            <span className="text-sm text-muted">{biblioteca.length} pistas</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-surface2 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3"></th>
                   <th className="px-3 py-3">Título</th>
@@ -184,25 +174,25 @@ export default function AutoDJ() {
                   <th className="px-3 py-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {biblioteca.map((t) => {
                   const sonando =
                     medioActual?.tipo === "pista" && medioActual?.id === t.id && reproduciendo;
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50">
+                    <tr key={t.id} className="hover:bg-surface2">
                       <td className="px-4 py-2">
                         <div className="relative h-10 w-10">
                           {t.artwork ? (
                             <img src={t.artwork} alt="" className="h-10 w-10 rounded-md object-cover" />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-400">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface2 text-muted">
                               <Music2 size={16} />
                             </div>
                           )}
                           {t.previewUrl && (
                             <button
                               onClick={() => (sonando ? alternar() : reproducirPista(t))}
-                              className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40 text-white opacity-0 transition hover:opacity-100"
+                              className="absolute inset-0 flex items-center justify-center rounded-md bg-black/50 text-white opacity-0 transition hover:opacity-100"
                               title="Escuchar preview"
                             >
                               {sonando ? <Pause size={14} /> : <Play size={14} />}
@@ -210,16 +200,16 @@ export default function AutoDJ() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-medium text-slate-800">{t.titulo}</td>
-                      <td className="px-3 py-2 text-slate-600">{t.artista}</td>
-                      <td className="hidden px-3 py-2 text-slate-500 lg:table-cell">{t.album}</td>
+                      <td className="px-3 py-2 font-medium text-fg">{t.titulo}</td>
+                      <td className="px-3 py-2 text-muted">{t.artista}</td>
+                      <td className="hidden px-3 py-2 text-muted lg:table-cell">{t.album}</td>
                       <td className="px-3 py-2">
-                        <span className="badge bg-brand-50 text-brand-700">{t.genero}</span>
+                        <span className="badge bg-brand-500/10 text-brand-500">{t.genero}</span>
                       </td>
                       <td className="px-3 py-2">
                         <BadgeFuente fuente={t.fuente} />
                       </td>
-                      <td className="px-3 py-2 text-slate-500">
+                      <td className="px-3 py-2 text-muted">
                         <span className="flex items-center gap-1">
                           <Clock size={13} /> {t.duracion}
                         </span>
@@ -227,7 +217,7 @@ export default function AutoDJ() {
                       <td className="px-3 py-2 text-right">
                         <button
                           onClick={() => eliminarPista(t.id)}
-                          className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                          className="rounded-lg p-2 text-muted hover:bg-red-500/10 hover:text-red-500"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -247,21 +237,21 @@ export default function AutoDJ() {
           {playlists.map((p) => (
             <div key={p.id} className="card p-5">
               <div className="flex items-start justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500/15 text-brand-500">
                   <ListMusic size={20} />
                 </div>
-                <span className={`badge ${p.activa ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                <span className={`badge ${p.activa ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-surface2 text-muted"}`}>
                   {p.activa ? "Activa" : "Inactiva"}
                 </span>
               </div>
-              <h3 className="mt-3 font-bold text-slate-800">{p.nombre}</h3>
-              <p className="text-xs text-slate-400">{p.tipo}</p>
-              <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+              <h3 className="mt-3 font-bold text-fg">{p.nombre}</h3>
+              <p className="text-xs text-muted">{p.tipo}</p>
+              <div className="mt-4 flex items-center justify-between text-sm text-muted">
                 <span>{p.pistas} pistas</span>
-                <span className="font-semibold text-brand-700">Peso {p.peso}%</span>
+                <span className="font-semibold text-brand-500">Peso {p.peso}%</span>
               </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-brand-500" style={{ width: `${p.peso}%` }} />
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+                <div className="h-full rounded-full bg-brand-grad" style={{ width: `${p.peso}%` }} />
               </div>
             </div>
           ))}
@@ -273,7 +263,7 @@ export default function AutoDJ() {
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-surface2 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-5 py-3">Evento</th>
                   <th className="px-5 py-3">Inicio</th>
@@ -282,15 +272,15 @@ export default function AutoDJ() {
                   <th className="px-5 py-3">Días</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {programacion.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-800">{p.nombre}</td>
-                    <td className="px-5 py-3 text-slate-600">{p.inicio}</td>
-                    <td className="px-5 py-3 text-slate-600">{p.fin}</td>
-                    <td className="px-5 py-3 text-slate-600">{p.playlist}</td>
+                  <tr key={p.id} className="hover:bg-surface2">
+                    <td className="px-5 py-3 font-medium text-fg">{p.nombre}</td>
+                    <td className="px-5 py-3 text-muted">{p.inicio}</td>
+                    <td className="px-5 py-3 text-muted">{p.fin}</td>
+                    <td className="px-5 py-3 text-muted">{p.playlist}</td>
                     <td className="px-5 py-3">
-                      <span className="badge bg-brand-50 text-brand-700">{p.dias}</span>
+                      <span className="badge bg-brand-500/10 text-brand-500">{p.dias}</span>
                     </td>
                   </tr>
                 ))}
