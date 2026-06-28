@@ -1,4 +1,5 @@
 import { RadioTower } from "lucide-react";
+import OnAir from "../components/transmision/OnAir";
 import PanelMezclador from "../components/transmision/PanelMezclador";
 import PanelReproductor from "../components/transmision/PanelReproductor";
 import PanelCola from "../components/transmision/PanelCola";
@@ -10,13 +11,14 @@ import PanelSoundboard from "../components/transmision/PanelSoundboard";
 export default function Transmision() {
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-fg">
             <RadioTower className="text-brand-500" size={24} /> Transmisión
           </h1>
           <p className="text-sm text-muted">Cabina en vivo: reproductor, AutoDJ, mensajes, clima y efectos.</p>
         </div>
+        <OnAir />
       </div>
 
       {/* Mezclador DJ en vivo (centro de la cabina) */}

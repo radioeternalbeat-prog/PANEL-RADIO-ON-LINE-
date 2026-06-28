@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { reportarNivel } from "../audio/nivelBus";
 
 const PlayerContext = createContext(null);
 
@@ -34,6 +35,26 @@ export function PlayerProvider({ children }) {
 
   if (!audioRef.current && typeof Audio !== "undefined") {
     audioRef.current = new Audio();
+    audioRef.current.crossOrigin = "anonymous";
+  }
+
+  // Análisis de nivel (Web Audio) para visualizaciones reactivas (ON AIR).
+  const analisisRef = useRef({ ctx: null, source: null, analyser: null });
+  function asegurarAnalisis() {
+    const a = analisisRef.current;
+    if (a.ctx || !audioRef.current) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const source = ctx.createMediaElementSource(audioRef.current);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      analisisRef.current = { ctx, source, analyser };
+    } catch {
+      /* si falla, el audio se reproduce normalmente sin análisis */
+    }
   }
 
   useEffect(() => {
@@ -95,6 +116,10 @@ export function PlayerProvider({ children }) {
 
     if (!audio) return;
     if (medio.url) {
+      asegurarAnalisis();
+      if (analisisRef.current.ctx?.state === "suspended") {
+        analisisRef.current.ctx.resume();
+      }
       audio.src = medio.url;
       audio
         .play()
@@ -108,6 +133,29 @@ export function PlayerProvider({ children }) {
       setReproduciendo(true);
     }
   }
+
+  // Reporta el nivel del reproductor al bus compartido (para visualizaciones).
+  useEffect(() => {
+    let raf;
+    const buf = new Uint8Array(128);
+    function loop() {
+      const an = analisisRef.current.analyser;
+      if (an) {
+        an.getByteTimeDomainData(buf);
+        let s = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          s += v * v;
+        }
+        reportarNivel("player", Math.sqrt(s / buf.length));
+      } else {
+        reportarNivel("player", 0);
+      }
+      raf = requestAnimationFrame(loop);
+    }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // Reproducir una posición concreta de la cola.
   function reproducirIndice(i) {

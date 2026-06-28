@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "../../api/client";
+import { reportarNivel } from "../../audio/nivelBus";
 
 // Crossfade de igual potencia: x=0 -> todo A, x=1 -> todo B.
 function gananciasCross(x) {
@@ -101,7 +102,10 @@ export default function PanelMezclador() {
     const ctx = new Ctx();
     const masterGain = ctx.createGain();
     const duckGain = ctx.createGain();
+    const masterAnalyser = ctx.createAnalyser();
+    masterAnalyser.fftSize = 256;
     duckGain.connect(masterGain);
+    masterGain.connect(masterAnalyser);
     masterGain.connect(ctx.destination);
 
     function crearDeck() {
@@ -140,6 +144,7 @@ export default function PanelMezclador() {
       ctx,
       masterGain,
       duckGain,
+      masterAnalyser,
       A: crearDeck(),
       B: crearDeck(),
       mic: null,
@@ -211,6 +216,8 @@ export default function PanelMezclador() {
           if (micLevelRef.current)
             micLevelRef.current.style.width = `${Math.min(100, nivelMic * 260)}%`;
         }
+        // Nivel master -> bus compartido (para el cartel ON AIR)
+        if (g.masterAnalyser) reportarNivel("mixer", rms(g.masterAnalyser, buf));
       }
       raf = requestAnimationFrame(loop);
     }
