@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { samplesRepo } from "../db/repos.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const UPLOADS_DIR = path.resolve(__dirname, "../../data/uploads");
+export const UPLOADS_DIR = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.resolve(__dirname, "../../data/uploads");
 mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
