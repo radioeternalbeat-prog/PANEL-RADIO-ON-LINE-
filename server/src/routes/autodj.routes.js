@@ -61,6 +61,54 @@ router.get("/playlists", (req, res) => {
   res.json(playlistsRepo.listar());
 });
 
+// POST /api/autodj/playlists  { nombre, tipo }
+router.post("/playlists", (req, res) => {
+  const { nombre, tipo } = req.body || {};
+  if (!nombre || !nombre.trim()) return res.status(400).json({ mensaje: "El nombre es obligatorio." });
+  res.status(201).json(playlistsRepo.crear({ nombre: nombre.trim(), tipo }));
+});
+
+// DELETE /api/autodj/playlists/:id
+router.delete("/playlists/:id", (req, res) => {
+  const p = playlistsRepo.eliminar(Number(req.params.id));
+  if (!p) return res.status(404).json({ mensaje: "Playlist no encontrada." });
+  res.json({ mensaje: "Playlist eliminada.", playlist: p });
+});
+
+// GET /api/autodj/playlists/:id/pistas  -> canciones de la playlist
+router.get("/playlists/:id/pistas", (req, res) => {
+  res.json(playlistsRepo.pistasDe(Number(req.params.id)));
+});
+
+// POST /api/autodj/playlists/:id/pistas  { pistaId }  -> agregar de la biblioteca
+router.post("/playlists/:id/pistas", (req, res) => {
+  const { pistaId } = req.body || {};
+  if (!pistaId) return res.status(400).json({ mensaje: "Falta pistaId." });
+  res.status(201).json(playlistsRepo.agregarPista(Number(req.params.id), Number(pistaId)));
+});
+
+// DELETE /api/autodj/playlists/:id/pistas/:pistaId
+router.delete("/playlists/:id/pistas/:pistaId", (req, res) => {
+  res.json(playlistsRepo.quitarPista(Number(req.params.id), Number(req.params.pistaId)));
+});
+
+// POST /api/autodj/playlists/:id/subir  (multipart) -> sube audio Y lo agrega a la playlist
+router.post("/playlists/:id/subir", subir.single("archivo"), (req, res) => {
+  if (!req.file) return res.status(400).json({ mensaje: "Falta el archivo de audio." });
+  const { titulo, artista } = req.body || {};
+  const url = `/uploads/${req.file.filename}`;
+  const pista = pistasRepo.agregar({
+    titulo: titulo || req.file.originalname.replace(/\.[^.]+$/, ""),
+    artista: artista || "Desconocido",
+    genero: "Playlist",
+    fuente: "archivo",
+    previewUrl: url,
+    ruta: url,
+  });
+  playlistsRepo.agregarPista(Number(req.params.id), pista.id);
+  res.status(201).json(pista);
+});
+
 // GET /api/autodj/programacion
 router.get("/programacion", (req, res) => {
   res.json(programacionRepo.listar());

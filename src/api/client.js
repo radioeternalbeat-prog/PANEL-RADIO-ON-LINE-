@@ -88,6 +88,13 @@ export const api = {
     request(`/autodj/biblioteca${busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : ""}`),
   eliminarPista: (id) => request(`/autodj/biblioteca/${id}`, { metodo: "DELETE" }),
   playlists: () => request("/autodj/playlists"),
+  crearPlaylist: (datos) => request("/autodj/playlists", { metodo: "POST", cuerpo: datos }),
+  eliminarPlaylist: (id) => request(`/autodj/playlists/${id}`, { metodo: "DELETE" }),
+  pistasDePlaylist: (id) => request(`/autodj/playlists/${id}/pistas`),
+  agregarPistaPlaylist: (id, pistaId) =>
+    request(`/autodj/playlists/${id}/pistas`, { metodo: "POST", cuerpo: { pistaId } }),
+  quitarPistaPlaylist: (id, pistaId) =>
+    request(`/autodj/playlists/${id}/pistas/${pistaId}`, { metodo: "DELETE" }),
   programacion: () => request("/autodj/programacion"),
 
   // iTunes
@@ -143,6 +150,24 @@ export async function subirCancion({ archivo, titulo, artista }) {
   });
   const datos = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir la canción.");
+  return datos;
+}
+
+// Sube una canción directamente a una playlist (la guarda en biblioteca y la enlaza).
+export async function subirAPlaylist({ id, archivo, titulo, artista }) {
+  const fd = new FormData();
+  fd.append("archivo", archivo);
+  if (titulo) fd.append("titulo", titulo);
+  if (artista) fd.append("artista", artista);
+
+  const token = getToken();
+  const resp = await fetch(`${API_URL}/autodj/playlists/${id}/subir`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir la canción a la playlist.");
   return datos;
 }
 

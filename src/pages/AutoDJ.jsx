@@ -19,6 +19,7 @@ import { api } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
 import BuscadorItunes from "../components/BuscadorItunes";
 import ImportadorCanciones from "../components/ImportadorCanciones";
+import ModalPlaylist from "../components/ModalPlaylist";
 
 const tabs = [
   { id: "biblioteca", label: "Biblioteca", icon: Music4 },
@@ -48,12 +49,43 @@ export default function AutoDJ() {
   const [importandoXml, setImportandoXml] = useState(false);
   const [mostrarImportar, setMostrarImportar] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [playlistAbierta, setPlaylistAbierta] = useState(null);
+  const [creandoPlaylist, setCreandoPlaylist] = useState(false);
+  const [nombreNueva, setNombreNueva] = useState("");
   const inputXml = useRef(null);
   const { reproducirPista, medioActual, reproduciendo, alternar } = usePlayer();
 
   async function cargarBiblioteca(q = "") {
     const b = await api.biblioteca(q);
     setBiblioteca(b);
+  }
+
+  function recargarPlaylists() {
+    api.playlists().then(setPlaylists).catch(() => {});
+  }
+
+  async function crearPlaylist() {
+    const nombre = nombreNueva.trim();
+    if (!nombre) return;
+    try {
+      await api.crearPlaylist({ nombre });
+      setNombreNueva("");
+      setCreandoPlaylist(false);
+      recargarPlaylists();
+    } catch (err) {
+      setAviso(err.message || "No se pudo crear la playlist.");
+    }
+  }
+
+  async function eliminarPlaylist(id, e) {
+    e?.stopPropagation();
+    if (!confirm("¿Eliminar esta playlist? Las canciones permanecen en la biblioteca.")) return;
+    try {
+      await api.eliminarPlaylist(id);
+      setPlaylists((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setAviso(err.message || "No se pudo eliminar la playlist.");
+    }
   }
 
   useEffect(() => {
@@ -240,29 +272,99 @@ export default function AutoDJ() {
 
       {/* Playlists */}
       {tab === "playlists" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {playlists.map((p) => (
-            <div key={p.id} className="card p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500/15 text-brand-500">
-                  <ListMusic size={20} />
+        <>
+          <p className="-mt-2 text-sm text-muted">
+            Cada playlist es independiente: sube música o agrega canciones de la biblioteca a cada una por separado.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {playlists.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPlaylistAbierta(p)}
+                className="card group p-5 text-left transition hover:border-brand-500/50 hover:shadow-lg"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500/15 text-brand-500">
+                    <ListMusic size={20} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`badge ${
+                        p.activa
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "bg-surface2 text-muted"
+                      }`}
+                    >
+                      {p.activa ? "Activa" : "Inactiva"}
+                    </span>
+                    <span
+                      onClick={(e) => eliminarPlaylist(p.id, e)}
+                      className="rounded-lg p-1.5 text-muted opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
+                      title="Eliminar playlist"
+                    >
+                      <Trash2 size={15} />
+                    </span>
+                  </div>
                 </div>
-                <span className={`badge ${p.activa ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-surface2 text-muted"}`}>
-                  {p.activa ? "Activa" : "Inactiva"}
-                </span>
+                <h3 className="mt-3 font-bold text-fg">{p.nombre}</h3>
+                <p className="text-xs text-muted">{p.tipo}</p>
+                <div className="mt-4 flex items-center justify-between text-sm text-muted">
+                  <span className="flex items-center gap-1">
+                    <Music4 size={14} /> {p.pistas} pistas
+                  </span>
+                  <span className="font-semibold text-brand-500 opacity-0 transition group-hover:opacity-100">
+                    Gestionar →
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+                  <div
+                    className="h-full rounded-full bg-brand-grad"
+                    style={{ width: `${Math.min(100, p.pistas * 10)}%` }}
+                  />
+                </div>
+              </button>
+            ))}
+
+            {/* Tarjeta: nueva playlist */}
+            {creandoPlaylist ? (
+              <div className="card flex flex-col justify-center gap-3 p-5">
+                <input
+                  autoFocus
+                  className="input"
+                  placeholder="Nombre de la playlist"
+                  value={nombreNueva}
+                  onChange={(e) => setNombreNueva(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") crearPlaylist();
+                    if (e.key === "Escape") setCreandoPlaylist(false);
+                  }}
+                />
+                <div className="flex gap-2">
+                  <button className="btn-primary flex-1" onClick={crearPlaylist}>
+                    Crear
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => {
+                      setCreandoPlaylist(false);
+                      setNombreNueva("");
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
-              <h3 className="mt-3 font-bold text-fg">{p.nombre}</h3>
-              <p className="text-xs text-muted">{p.tipo}</p>
-              <div className="mt-4 flex items-center justify-between text-sm text-muted">
-                <span>{p.pistas} pistas</span>
-                <span className="font-semibold text-brand-500">Peso {p.peso}%</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
-                <div className="h-full rounded-full bg-brand-grad" style={{ width: `${p.peso}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
+            ) : (
+              <button
+                onClick={() => setCreandoPlaylist(true)}
+                className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line text-muted transition hover:border-brand-500/60 hover:text-brand-500"
+              >
+                <Plus size={26} />
+                <span className="text-sm font-semibold">Nueva playlist</span>
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       {/* Programación */}
@@ -308,6 +410,14 @@ export default function AutoDJ() {
         <ImportadorCanciones
           onCerrar={() => setMostrarImportar(false)}
           onImportado={() => cargarBiblioteca(busqueda)}
+        />
+      )}
+
+      {playlistAbierta && (
+        <ModalPlaylist
+          playlist={playlistAbierta}
+          onCerrar={() => setPlaylistAbierta(null)}
+          onCambios={recargarPlaylists}
         />
       )}
     </div>

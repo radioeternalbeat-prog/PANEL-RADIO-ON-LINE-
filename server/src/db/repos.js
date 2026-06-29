@@ -219,7 +219,53 @@ export const pistasRepo = {
 // ---------- Playlists y programación ----------
 export const playlistsRepo = {
   listar() {
-    return db.prepare("SELECT * FROM playlists ORDER BY id").all().map(mapPlaylist);
+    const filas = db.prepare("SELECT * FROM playlists ORDER BY id").all();
+    const conteos = db
+      .prepare("SELECT playlist_id, COUNT(*) AS n FROM playlist_pistas GROUP BY playlist_id")
+      .all();
+    const mapa = Object.fromEntries(conteos.map((c) => [c.playlist_id, c.n]));
+    return filas.map((r) => ({ ...mapPlaylist(r), pistas: mapa[r.id] || 0 }));
+  },
+  obtener(id) {
+    const r = db.prepare("SELECT * FROM playlists WHERE id = ?").get(id);
+    if (!r) return null;
+    const n = db.prepare("SELECT COUNT(*) AS n FROM playlist_pistas WHERE playlist_id = ?").get(id).n;
+    return { ...mapPlaylist(r), pistas: n };
+  },
+  crear({ nombre, tipo }) {
+    const info = db
+      .prepare("INSERT INTO playlists (nombre, tipo, pistas, activa, peso) VALUES (?,?,0,1,0)")
+      .run(nombre, tipo || "General");
+    return this.obtener(info.lastInsertRowid);
+  },
+  eliminar(id) {
+    const p = this.obtener(id);
+    if (!p) return null;
+    db.prepare("DELETE FROM playlist_pistas WHERE playlist_id = ?").run(id);
+    db.prepare("DELETE FROM playlists WHERE id = ?").run(id);
+    return p;
+  },
+  // Canciones de una playlist
+  pistasDe(id) {
+    return db
+      .prepare(
+        `SELECT p.* FROM pistas p
+         JOIN playlist_pistas pp ON pp.pista_id = p.id
+         WHERE pp.playlist_id = ?
+         ORDER BY pp.creado`
+      )
+      .all(id)
+      .map(mapPista);
+  },
+  agregarPista(id, pistaId) {
+    db.prepare(
+      "INSERT OR IGNORE INTO playlist_pistas (playlist_id, pista_id, creado) VALUES (?,?,?)"
+    ).run(id, pistaId, Date.now());
+    return this.obtener(id);
+  },
+  quitarPista(id, pistaId) {
+    db.prepare("DELETE FROM playlist_pistas WHERE playlist_id = ? AND pista_id = ?").run(id, pistaId);
+    return this.obtener(id);
   },
 };
 

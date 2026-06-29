@@ -109,6 +109,13 @@ function crearEsquema() {
       origen TEXT DEFAULT 'manual',
       creado INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS playlist_pistas (
+      playlist_id INTEGER NOT NULL,
+      pista_id INTEGER NOT NULL,
+      creado INTEGER,
+      PRIMARY KEY (playlist_id, pista_id)
+    );
   `);
 }
 
