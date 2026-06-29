@@ -1,16 +1,45 @@
-import { Music2, Pause, Play, Radio, Volume2, X } from "lucide-react";
+import { Music2, Pause, Play, Radio, Sparkles, Volume2, X } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
+import { useAutomatizacion } from "../context/AutomatizacionContext";
+
+// Interruptor compacto de piloto automático (reutilizable).
+function BotonAuto({ compacto = false }) {
+  const { auto, activarAuto, desactivarAuto } = useAutomatizacion();
+  return (
+    <button
+      onClick={() => (auto ? desactivarAuto() : activarAuto())}
+      title={auto ? "Piloto automático activo (clic para desactivar)" : "Activar piloto automático"}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+        auto
+          ? "bg-brand-grad text-white shadow-glow"
+          : "border border-line bg-surface2 text-muted hover:text-fg"
+      } ${compacto ? "" : "hidden sm:flex"}`}
+    >
+      <Sparkles size={14} className={auto ? "animate-pulse" : ""} />
+      {auto ? "AUTO" : "Auto"}
+    </button>
+  );
+}
 
 export default function MiniReproductor() {
   const { medioActual, reproduciendo, alternar, detener, volumen, setVolumen, error } =
     usePlayer();
 
-  if (!medioActual) return null;
+  // Cuando no hay nada sonando: píldora flotante solo con el piloto automático.
+  if (!medioActual) {
+    return (
+      <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
+        <div className="flex items-center gap-2 rounded-full border border-line bg-surface/95 px-3 py-2 shadow-glow backdrop-blur">
+          <BotonAuto compacto />
+        </div>
+      </div>
+    );
+  }
 
   const esPista = medioActual.tipo === "pista";
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 w-[min(680px,92vw)] -translate-x-1/2">
+    <div className="fixed bottom-4 left-1/2 z-40 w-[min(720px,92vw)] -translate-x-1/2">
       <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface/95 px-4 py-3 shadow-glow backdrop-blur">
         {medioActual.artwork ? (
           <img
@@ -35,15 +64,17 @@ export default function MiniReproductor() {
           </p>
         </div>
 
+        <BotonAuto />
+
         {esPista && (
-          <span className="hidden rounded-full border border-line bg-surface2 px-2 py-0.5 text-[10px] font-semibold text-muted sm:inline">
+          <span className="hidden rounded-full border border-line bg-surface2 px-2 py-0.5 text-[10px] font-semibold text-muted lg:inline">
             Preview 30s · iTunes
           </span>
         )}
 
         <button
           onClick={alternar}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-500"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-500"
           aria-label={reproduciendo ? "Pausar" : "Reproducir"}
         >
           {reproduciendo ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
@@ -64,7 +95,7 @@ export default function MiniReproductor() {
 
         <button
           onClick={detener}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-surface2 hover:text-fg"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface2 hover:text-fg"
           aria-label="Cerrar reproductor"
         >
           <X size={18} />
