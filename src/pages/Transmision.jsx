@@ -36,8 +36,10 @@ export default function Transmision() {
           </div>
           <PanelCola />
           <div className="flex flex-col gap-5">
-            <PanelReloj />
-            <PanelClima />
+            <div className="grid grid-cols-2 gap-5">
+              <PanelReloj />
+              <PanelClima />
+            </div>
             <PanelAudifonos />
           </div>
         </div>
