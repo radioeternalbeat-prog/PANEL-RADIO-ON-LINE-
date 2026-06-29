@@ -13,11 +13,12 @@ import {
   Search,
   Trash2,
   Upload,
+  UploadCloud,
 } from "lucide-react";
 import { api } from "../api/client";
-import { subirCancion } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
 import BuscadorItunes from "../components/BuscadorItunes";
+import ImportadorCanciones from "../components/ImportadorCanciones";
 
 const tabs = [
   { id: "biblioteca", label: "Biblioteca", icon: Music4 },
@@ -45,10 +46,9 @@ export default function AutoDJ() {
   const [cargando, setCargando] = useState(true);
   const [mostrarItunes, setMostrarItunes] = useState(false);
   const [importandoXml, setImportandoXml] = useState(false);
-  const [subiendoAudio, setSubiendoAudio] = useState(false);
+  const [mostrarImportar, setMostrarImportar] = useState(false);
   const [aviso, setAviso] = useState("");
   const inputXml = useRef(null);
-  const inputAudio = useRef(null);
   const { reproducirPista, medioActual, reproduciendo, alternar } = usePlayer();
 
   async function cargarBiblioteca(q = "") {
@@ -101,25 +101,6 @@ export default function AutoDJ() {
     }
   }
 
-  async function onArchivoAudio(e) {
-    const archivos = Array.from(e.target.files || []);
-    e.target.value = "";
-    if (!archivos.length) return;
-    setSubiendoAudio(true);
-    setAviso("");
-    try {
-      for (const archivo of archivos) {
-        await subirCancion({ archivo, titulo: archivo.name.replace(/\.[^.]+$/, "") });
-      }
-      setAviso(`${archivos.length} canción(es) subida(s) a la biblioteca.`);
-      await cargarBiblioteca(busqueda);
-    } catch (err) {
-      setAviso(err.message || "No se pudieron subir los archivos.");
-    } finally {
-      setSubiendoAudio(false);
-    }
-  }
-
   if (cargando) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -139,10 +120,8 @@ export default function AutoDJ() {
         </div>
         <div className="flex flex-wrap gap-2">
           <input ref={inputXml} type="file" accept=".xml" className="hidden" onChange={onArchivoXml} />
-          <input ref={inputAudio} type="file" accept="audio/*" multiple className="hidden" onChange={onArchivoAudio} />
-          <button className="btn-ghost" onClick={() => inputAudio.current?.click()} disabled={subiendoAudio}>
-            {subiendoAudio ? <Loader2 size={16} className="animate-spin" /> : <Music2 size={16} />}
-            Subir audio
+          <button className="btn-ghost" onClick={() => setMostrarImportar(true)}>
+            <UploadCloud size={16} /> Subir música
           </button>
           <button className="btn-ghost" onClick={() => inputXml.current?.click()} disabled={importandoXml}>
             {importandoXml ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -321,6 +300,13 @@ export default function AutoDJ() {
       {mostrarItunes && (
         <BuscadorItunes
           onCerrar={() => setMostrarItunes(false)}
+          onImportado={() => cargarBiblioteca(busqueda)}
+        />
+      )}
+
+      {mostrarImportar && (
+        <ImportadorCanciones
+          onCerrar={() => setMostrarImportar(false)}
           onImportado={() => cargarBiblioteca(busqueda)}
         />
       )}
