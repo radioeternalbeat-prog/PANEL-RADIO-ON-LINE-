@@ -19,6 +19,7 @@ export function MezcladorProvider({ children }) {
   // Estado del monitor de audífonos.
   const [cue, setCue] = useState({ A: false, B: false });
   const [monitorVol, setMonitorVol] = useState(0.8);
+  const [mezcla, setMezcla] = useState(0); // 0 = solo CUE, 1 = solo MIX (master)
   const [salidaId, setSalidaId] = useState(""); // dispositivo de salida (audífonos)
   const [salidas, setSalidas] = useState([]);
 
@@ -59,6 +60,8 @@ export function MezcladorProvider({ children }) {
       alternarCue,
       monitorVol,
       setMonitorVol,
+      mezcla,
+      setMezcla,
       salidaId,
       setSalidaId,
       salidas,
@@ -72,6 +75,7 @@ export function MezcladorProvider({ children }) {
       cue,
       alternarCue,
       monitorVol,
+      mezcla,
       salidaId,
       salidas,
       refrescarSalidas,

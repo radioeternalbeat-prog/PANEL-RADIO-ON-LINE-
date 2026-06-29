@@ -74,7 +74,7 @@ export default function PanelMezclador() {
   const setters = { A: setDeckA, B: setDeckB };
 
   // Permite que otros paneles (ej. Cola) carguen pistas en los decks.
-  const { registrarCargador, registrarPreparador, cue: cueMonitor, monitorVol, salidaId } = useMezclador();
+  const { registrarCargador, registrarPreparador, cue: cueMonitor, monitorVol, mezcla, salidaId } = useMezclador();
   const cargarRef = useRef(null);
   useEffect(() => {
     registrarCargador((id, pista) => cargarRef.current?.(id, pista));
@@ -102,6 +102,14 @@ export default function PanelMezclador() {
     const g = grafoRef.current;
     if (g?.monitorGain) g.monitorGain.gain.value = monitorVol;
   }, [monitorVol]);
+
+  // Mezcla CUE/MIX en los audífonos.
+  useEffect(() => {
+    const g = grafoRef.current;
+    if (!g) return;
+    if (g.cueBus) g.cueBus.gain.value = 1 - mezcla;
+    if (g.mixBus) g.mixBus.gain.value = mezcla;
+  }, [mezcla]);
 
   useEffect(() => {
     const a = grafoRef.current?.monitorAudio;
@@ -149,6 +157,14 @@ export default function PanelMezclador() {
     // --- Bus de monitoreo (audífonos / CUE) con salida independiente ---
     const monitorGain = ctx.createGain();
     monitorGain.gain.value = 0.8;
+    // Buses para mezclar CUE (decks) y MIX (master) en los audífonos.
+    const cueBus = ctx.createGain();
+    cueBus.gain.value = 1; // por defecto: solo CUE
+    const mixBus = ctx.createGain();
+    mixBus.gain.value = 0;
+    cueBus.connect(monitorGain);
+    mixBus.connect(monitorGain);
+    masterGain.connect(mixBus); // el mix al aire también puede oírse en el monitor
     let monitorAudio = null;
     try {
       const monitorDest = ctx.createMediaStreamDestination();
@@ -191,7 +207,7 @@ export default function PanelMezclador() {
       high.connect(filtro);
       filtro.connect(gain);
       filtro.connect(cueGain);
-      cueGain.connect(monitorGain);
+      cueGain.connect(cueBus);
       gain.connect(analyser);
       analyser.connect(crossGain);
       crossGain.connect(duckGain);
@@ -204,6 +220,8 @@ export default function PanelMezclador() {
       duckGain,
       masterAnalyser,
       monitorGain,
+      cueBus,
+      mixBus,
       monitorAudio,
       A: crearDeck(),
       B: crearDeck(),

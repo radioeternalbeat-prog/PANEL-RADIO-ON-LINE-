@@ -10,6 +10,8 @@ export default function PanelAudifonos() {
     alternarCue,
     monitorVol,
     setMonitorVol,
+    mezcla,
+    setMezcla,
     salidaId,
     setSalidaId,
     salidas,
@@ -65,6 +67,20 @@ export default function PanelAudifonos() {
         <input
           type="range" min="0" max="1" step="0.01" value={monitorVol}
           onChange={(e) => setMonitorVol(Number(e.target.value))}
+          className="h-1.5 w-full cursor-pointer accent-brand-500"
+        />
+      </div>
+
+      {/* Mezcla CUE / MIX */}
+      <div className="mb-4">
+        <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase text-muted">
+          <span className={mezcla < 0.5 ? "text-brand-500" : ""}>Cue</span>
+          <span>Mezcla</span>
+          <span className={mezcla > 0.5 ? "text-brand-500" : ""}>Mix</span>
+        </div>
+        <input
+          type="range" min="0" max="1" step="0.01" value={mezcla}
+          onChange={(e) => setMezcla(Number(e.target.value))}
           className="h-1.5 w-full cursor-pointer accent-brand-500"
         />
       </div>
