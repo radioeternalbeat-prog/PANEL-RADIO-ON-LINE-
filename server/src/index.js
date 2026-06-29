@@ -21,6 +21,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Marcador de versión para verificar qué build está desplegado.
+const VERSION = "1.1.0-cabina-mic4-2026-06";
+
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
 const origenesPermitidos = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
@@ -32,7 +35,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Salud del servicio (público)
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, servicio: "PANEL RADIO ONLINE API", ts: Date.now() });
+  res.json({ ok: true, servicio: "PANEL RADIO ONLINE API", version: VERSION, ts: Date.now() });
 });
 
 // Archivos de audio subidos (samples) — públicos para que <audio> los pueda cargar.
