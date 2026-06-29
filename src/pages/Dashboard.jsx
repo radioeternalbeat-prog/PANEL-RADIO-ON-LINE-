@@ -10,6 +10,7 @@ import {
   Plus,
   Radio,
   Settings2,
+  Share2,
   Signal,
   Square,
   TrendingUp,
@@ -19,6 +20,8 @@ import {
 import { api } from "../api/client";
 import { useRealtime } from "../hooks/useRealtime";
 import { usePlayer } from "../context/PlayerContext";
+import ModalEstacion from "../components/estaciones/ModalEstacion";
+import ModalCompartir from "../components/estaciones/ModalCompartir";
 
 function Estado({ estado }) {
   const map = {
@@ -57,6 +60,8 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [accionando, setAccionando] = useState(null);
+  const [modalEstacion, setModalEstacion] = useState(null); // { estacion } | { } (crear)
+  const [compartir, setCompartir] = useState(null); // estacion a compartir
   const { reproducir, estacionActual, reproduciendo, alternar } = usePlayer();
   const { datos: realtime, conectado } = useRealtime();
 
@@ -97,6 +102,19 @@ export default function Dashboard() {
     }
   }
 
+  function onGuardado(est) {
+    setEstaciones((prev) => {
+      const existe = prev.some((x) => x.id === est.id);
+      return existe ? prev.map((x) => (x.id === est.id ? est : x)) : [...prev, est];
+    });
+    setModalEstacion(null);
+  }
+
+  function onEliminado(id) {
+    setEstaciones((prev) => prev.filter((x) => x.id !== id));
+    setModalEstacion(null);
+  }
+
   const totalOyentes = estacionesVivo.reduce((a, e) => a + e.oyentesActuales, 0);
   const enLinea = estacionesVivo.filter((e) => e.estado === "online").length;
   const picoTotal = estacionesVivo.reduce((a, e) => a + e.picoOyentes, 0);
@@ -124,7 +142,7 @@ export default function Dashboard() {
             </span>
           </p>
         </div>
-        <button className="btn-primary">
+        <button className="btn-primary" onClick={() => setModalEstacion({})}>
           <Plus size={18} /> Nueva estación
         </button>
       </div>
@@ -234,7 +252,10 @@ export default function Dashboard() {
                 >
                   {sonando ? <Pause size={16} /> : <Play size={16} />}
                 </button>
-                <button className="btn-ghost" title="Configurar">
+                <button className="btn-ghost" title="Compartir" onClick={() => setCompartir(e)}>
+                  <Share2 size={16} />
+                </button>
+                <button className="btn-ghost" title="Configurar" onClick={() => setModalEstacion({ estacion: e })}>
                   <Settings2 size={16} />
                 </button>
               </div>
@@ -242,6 +263,16 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {modalEstacion && (
+        <ModalEstacion
+          estacion={modalEstacion.estacion}
+          onCerrar={() => setModalEstacion(null)}
+          onGuardado={onGuardado}
+          onEliminado={onEliminado}
+        />
+      )}
+      {compartir && <ModalCompartir estacion={compartir} onCerrar={() => setCompartir(null)} />}
     </div>
   );
 }
