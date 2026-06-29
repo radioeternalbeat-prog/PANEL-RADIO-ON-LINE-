@@ -28,29 +28,30 @@ export default function Transmision() {
         {/* Mezclador DJ en vivo (centro de la cabina) */}
         <PanelMezclador />
 
-        {/* Fila 1: (Reproductor + Micrófonos) · Cola · (Reloj + Clima + Audífonos) */}
+        {/* Fila 1: (Micrófonos + Audífonos) · Cola · (Reproductor + Hora/Clima + Mensajes) */}
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
+          {/* Izquierda */}
+          <div className="flex flex-col gap-5">
+            <PanelMicrofonos />
+            <PanelAudifonos />
+          </div>
+
+          {/* Centro */}
+          <PanelCola />
+
+          {/* Derecha */}
           <div className="flex flex-col gap-5">
             <PanelReproductor />
-            <PanelMicrofonos />
-          </div>
-          <PanelCola />
-          <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-5">
               <PanelReloj />
               <PanelClima />
             </div>
-            <PanelAudifonos />
+            <PanelMensajes />
           </div>
         </div>
 
-        {/* Fila 2: Soundboard (ancho) · Mensajes */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <PanelSoundboard />
-          </div>
-          <PanelMensajes />
-        </div>
+        {/* Fila 2: Soundboard a todo el ancho */}
+        <PanelSoundboard />
       </div>
     </MezcladorProvider>
   );
