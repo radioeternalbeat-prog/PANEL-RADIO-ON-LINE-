@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  Clock3,
   Headphones,
   Loader2,
   Music2,
@@ -38,19 +39,40 @@ function Estado({ estado }) {
   );
 }
 
+// Ecualizador animado (activo cuando la estación está en línea).
+function Eq({ activo }) {
+  return (
+    <span className="flex h-4 w-5 items-end gap-0.5">
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className={`w-1 rounded-full ${activo ? "bg-brand-500 animate-eq" : "bg-line"}`}
+          style={activo ? { animationDelay: `${i * 0.18}s`, height: "25%" } : { height: "25%" }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function KpiCard({ icon: Icon, etiqueta, valor, detalle, color }) {
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted">{etiqueta}</p>
-          <p className="mt-1 font-display text-2xl font-bold text-fg">{valor}</p>
-          {detalle && <p className="mt-1 text-xs text-muted">{detalle}</p>}
-        </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color}`}>
-          <Icon size={22} />
-        </div>
+    <div className="card p-5 transition hover:-translate-y-0.5 hover:shadow-glow">
+      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${color}`}>
+        <Icon size={22} />
       </div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{etiqueta}</p>
+      <p className="font-display text-2xl font-bold text-fg">{valor}</p>
+      {detalle && <p className="mt-0.5 text-xs text-muted">{detalle}</p>}
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, valor, label }) {
+  return (
+    <div className="rounded-xl bg-surface2 p-2 text-center">
+      <Icon size={14} className="mx-auto text-muted" />
+      <p className="mt-0.5 font-display text-lg font-bold leading-none text-fg">{valor}</p>
+      <p className="mt-1 text-[10px] text-muted">{label}</p>
     </div>
   );
 }
@@ -60,16 +82,15 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [accionando, setAccionando] = useState(null);
-  const [modalEstacion, setModalEstacion] = useState(null); // { estacion } | { } (crear)
-  const [compartir, setCompartir] = useState(null); // estacion a compartir
+  const [modalEstacion, setModalEstacion] = useState(null);
+  const [compartir, setCompartir] = useState(null);
   const { reproducir, estacionActual, reproduciendo, alternar } = usePlayer();
   const { datos: realtime, conectado } = useRealtime();
 
   async function cargar() {
     try {
       setError("");
-      const data = await api.estaciones();
-      setEstaciones(data);
+      setEstaciones(await api.estaciones());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -91,9 +112,7 @@ export default function Dashboard() {
     setAccionando(est.id);
     try {
       const actualizada =
-        est.estado === "online"
-          ? await api.detenerEstacion(est.id)
-          : await api.iniciarEstacion(est.id);
+        est.estado === "online" ? await api.detenerEstacion(est.id) : await api.iniciarEstacion(est.id);
       setEstaciones((prev) => prev.map((e) => (e.id === est.id ? actualizada : e)));
     } catch (err) {
       setError(err.message);
@@ -164,78 +183,83 @@ export default function Dashboard() {
       {/* Tarjetas de estación */}
       <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
         {estacionesVivo.map((e) => {
+          const online = e.estado === "online";
           const esActual = estacionActual?.id === e.id;
           const sonando = esActual && reproduciendo;
           const ocupado = accionando === e.id;
+          const pct = Math.min(100, Math.round((e.oyentesActuales / e.oyentesMaximos) * 100));
+          const lleno = pct >= 90;
           return (
-            <div key={e.id} className="card flex flex-col overflow-hidden transition hover:shadow-glow">
-              <div className="flex items-start justify-between gap-3 border-b border-line p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-grad text-white">
-                    <Radio size={22} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-fg">{e.nombre}</h3>
-                    <p className="text-xs text-muted">
-                      {e.formato} · {e.bitrate} kbps
-                    </p>
-                  </div>
+            <div
+              key={e.id}
+              className={`card group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-glow ${
+                online ? "ring-1 ring-brand-500/30" : ""
+              }`}
+            >
+              {/* Resplandor superior si está en vivo */}
+              {online && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand-500/10 to-transparent" />
+              )}
+
+              {/* Cabecera */}
+              <div className="relative flex items-center gap-3 p-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-grad text-white shadow-glow">
+                  <Radio size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-bold text-fg">{e.nombre}</h3>
+                  <p className="truncate text-xs text-muted">
+                    {e.formato} · {e.bitrate} kbps · {e.montaje}
+                  </p>
                 </div>
                 <Estado estado={e.estado} />
               </div>
 
-              <div className="space-y-4 p-5">
-                <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2">
-                  <Music2 size={16} className="shrink-0 text-brand-500" />
-                  <p className="truncate text-sm text-muted">{e.cancionActual}</p>
-                </div>
+              {/* Ahora suena */}
+              <div className="mx-4 flex items-center gap-2 rounded-xl bg-surface2 px-3 py-2">
+                <Eq activo={online} />
+                <p className="truncate text-sm text-muted">{e.cancionActual}</p>
+              </div>
 
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div>
-                    <div className="flex items-center justify-center gap-1 text-muted">
-                      <Users size={14} />
-                    </div>
-                    <p className="mt-0.5 text-lg font-bold text-fg">{e.oyentesActuales}</p>
-                    <p className="text-[11px] text-muted">Oyentes</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-center gap-1 text-muted">
-                      <TrendingUp size={14} />
-                    </div>
-                    <p className="mt-0.5 text-lg font-bold text-fg">{e.picoOyentes}</p>
-                    <p className="text-[11px] text-muted">Pico</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-center gap-1 text-muted">
-                      <Activity size={14} />
-                    </div>
-                    <p className="mt-0.5 text-lg font-bold text-fg">{e.oyentesMaximos}</p>
-                    <p className="text-[11px] text-muted">Límite</p>
-                  </div>
-                </div>
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 p-4">
+                <Stat icon={Users} valor={e.oyentesActuales} label="Oyentes" />
+                <Stat icon={TrendingUp} valor={e.picoOyentes} label="Pico" />
+                <Stat icon={Activity} valor={e.oyentesMaximos} label="Límite" />
+              </div>
 
-                {/* Barra de capacidad */}
-                <div>
-                  <div className="mb-1 flex justify-between text-[11px] text-muted">
-                    <span>Capacidad</span>
-                    <span>{Math.round((e.oyentesActuales / e.oyentesMaximos) * 100)}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
-                    <div
-                      className="h-full rounded-full bg-brand-grad transition-all duration-500"
-                      style={{ width: `${Math.min(100, (e.oyentesActuales / e.oyentesMaximos) * 100)}%` }}
-                    />
-                  </div>
+              {/* Capacidad */}
+              <div className="px-4 pb-1">
+                <div className="mb-1 flex justify-between text-[11px] text-muted">
+                  <span>Capacidad</span>
+                  <span className={lleno ? "font-bold text-red-500" : ""}>{pct}%</span>
                 </div>
-
-                <div className="text-xs text-muted">
-                  <span className="font-medium text-fg">Uptime:</span> {e.uptime} ·{" "}
-                  <span className="font-medium text-fg">Montaje:</span> {e.montaje}
+                <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      lleno ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-brand-grad"
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
 
-              <div className="mt-auto flex items-center gap-2 border-t border-line p-4">
-                {e.estado === "online" ? (
+              {/* Uptime */}
+              <div className="px-4 pb-3 pt-2 text-[11px] text-muted">
+                {online ? (
+                  <span className="flex items-center gap-1">
+                    <Clock3 size={12} className="text-emerald-500" /> En línea · {e.uptime}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Clock3 size={12} /> Detenida
+                  </span>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div className="mt-auto flex items-center gap-2 border-t border-line p-3">
+                {online ? (
                   <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-danger flex-1">
                     {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} />} Detener
                   </button>
@@ -246,22 +270,33 @@ export default function Dashboard() {
                 )}
                 <button
                   onClick={() => (esActual ? alternar() : reproducir(e))}
-                  disabled={e.estado !== "online"}
-                  className="btn-ghost"
+                  disabled={!online}
+                  className="btn-ghost px-2.5"
                   title="Escuchar"
                 >
                   {sonando ? <Pause size={16} /> : <Play size={16} />}
                 </button>
-                <button className="btn-ghost" title="Compartir" onClick={() => setCompartir(e)}>
+                <button className="btn-ghost px-2.5" title="Compartir" onClick={() => setCompartir(e)}>
                   <Share2 size={16} />
                 </button>
-                <button className="btn-ghost" title="Configurar" onClick={() => setModalEstacion({ estacion: e })}>
+                <button className="btn-ghost px-2.5" title="Configurar" onClick={() => setModalEstacion({ estacion: e })}>
                   <Settings2 size={16} />
                 </button>
               </div>
             </div>
           );
         })}
+
+        {/* Tarjeta para crear nueva estación */}
+        <button
+          onClick={() => setModalEstacion({})}
+          className="flex min-h-[260px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line text-muted transition hover:border-brand-500/60 hover:text-brand-500"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface2">
+            <Plus size={24} />
+          </div>
+          <span className="text-sm font-semibold">Nueva estación</span>
+        </button>
       </div>
 
       {modalEstacion && (
