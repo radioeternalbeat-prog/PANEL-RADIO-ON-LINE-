@@ -2,21 +2,82 @@ import { Music2, Pause, Play, Radio, Sparkles, Volume2, X } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useAutomatizacion } from "../context/AutomatizacionContext";
 
-// Interruptor compacto de piloto automático (reutilizable).
-function BotonAuto({ compacto = false }) {
+// Mini ecualizador que retoma el motivo visual del cartel ON AIR.
+function MiniEq({ activo }) {
+  return (
+    <span className="flex h-3.5 items-end gap-[3px]" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={`w-[3px] rounded-full ${activo ? "bg-white animate-eq" : "bg-current opacity-40"}`}
+          style={activo ? { animationDelay: `${i * 0.18}s` } : { height: "35%" }}
+        />
+      ))}
+    </span>
+  );
+}
+
+// Interruptor de piloto automático, coherente con el diseño del panel.
+// variant="bar"  -> compacto, dentro de la barra del reproductor.
+// variant="pill" -> destacado, píldora flotante cuando no hay nada sonando.
+function BotonAuto({ variant = "bar" }) {
   const { auto, activarAuto, desactivarAuto } = useAutomatizacion();
+  const onClick = () => (auto ? desactivarAuto() : activarAuto());
+  const titulo = auto
+    ? "Piloto automático activo · clic para pasar a manual"
+    : "Activar piloto automático";
+
+  const base =
+    "group relative flex shrink-0 items-center rounded-full border transition focus:outline-none focus:ring-2 focus:ring-brand-500/40";
+  const estado = auto
+    ? "border-transparent bg-brand-grad text-white shadow-glow"
+    : "border-line bg-surface2 text-muted hover:border-brand-500/50 hover:text-fg";
+
+  if (variant === "pill") {
+    return (
+      <button onClick={onClick} title={titulo} className={`${base} ${estado} gap-3 py-1.5 pl-1.5 pr-4`}>
+        <span
+          className={`relative flex h-9 w-9 items-center justify-center rounded-full ${
+            auto ? "bg-white/20" : "bg-surface text-muted group-hover:text-fg"
+          }`}
+        >
+          {auto && (
+            <span className="absolute inset-0 animate-ping rounded-full bg-white/25" />
+          )}
+          <Sparkles size={17} />
+        </span>
+        <span className="flex flex-col items-start leading-none">
+          <span
+            className={`text-[9px] font-semibold uppercase tracking-[0.22em] ${
+              auto ? "text-white/80" : "text-muted"
+            }`}
+          >
+            Piloto
+          </span>
+          <span className="font-display text-sm font-extrabold tracking-tight">
+            {auto ? "AUTO" : "MANUAL"}
+          </span>
+        </span>
+        <MiniEq activo={auto} />
+      </button>
+    );
+  }
+
+  // Variante compacta para la barra del reproductor.
   return (
     <button
-      onClick={() => (auto ? desactivarAuto() : activarAuto())}
-      title={auto ? "Piloto automático activo (clic para desactivar)" : "Activar piloto automático"}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-        auto
-          ? "bg-brand-grad text-white shadow-glow"
-          : "border border-line bg-surface2 text-muted hover:text-fg"
-      } ${compacto ? "" : "hidden sm:flex"}`}
+      onClick={onClick}
+      title={titulo}
+      className={`${base} ${estado} hidden gap-2 px-3 py-1.5 sm:flex`}
     >
-      <Sparkles size={14} className={auto ? "animate-pulse" : ""} />
-      {auto ? "AUTO" : "Auto"}
+      <span className="relative flex items-center">
+        {auto && <span className="absolute -left-0.5 -top-0.5 h-2 w-2 animate-ping rounded-full bg-white/60" />}
+        <Sparkles size={14} />
+      </span>
+      <span className="font-display text-xs font-extrabold tracking-wide">
+        {auto ? "AUTO" : "MANUAL"}
+      </span>
+      <MiniEq activo={auto} />
     </button>
   );
 }
@@ -29,9 +90,7 @@ export default function MiniReproductor() {
   if (!medioActual) {
     return (
       <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
-        <div className="flex items-center gap-2 rounded-full border border-line bg-surface/95 px-3 py-2 shadow-glow backdrop-blur">
-          <BotonAuto compacto />
-        </div>
+        <BotonAuto variant="pill" />
       </div>
     );
   }
