@@ -22,6 +22,11 @@ server/.env
 # Base de datos SQLite (datos locales)
 server/data/
 
+# Streaming local (Docker)
+/out/
+/media/*
+!/media/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
