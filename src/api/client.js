@@ -65,6 +65,8 @@ export const api = {
   login: (usuario, clave) =>
     request("/auth/login", { metodo: "POST", cuerpo: { usuario, clave }, auth: false }),
   perfil: () => request("/auth/perfil"),
+  cambiarClave: (actual, nueva) =>
+    request("/auth/cambiar-clave", { metodo: "POST", cuerpo: { actual, nueva } }),
 
   // Estaciones
   estaciones: () => request("/estaciones"),

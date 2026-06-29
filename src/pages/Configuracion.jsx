@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Copy, Save, Server, Sliders, Users } from "lucide-react";
+import { Copy, KeyRound, Loader2, Save, Server, Sliders, Users } from "lucide-react";
+import { api } from "../api/client";
 import { bitratesSoportados, estaciones, formatosSoportados } from "../data/mockData";
 
 function Campo({ label, children }) {
@@ -27,6 +28,29 @@ export default function Configuracion() {
     descripcion: "La mejor música 24/7",
   });
   const [guardado, setGuardado] = useState(false);
+
+  // Cambio de contraseña del panel.
+  const [pwd, setPwd] = useState({ actual: "", nueva: "", confirmar: "" });
+  const [pwdMsg, setPwdMsg] = useState(null);
+  const [pwdCargando, setPwdCargando] = useState(false);
+
+  async function cambiarClave() {
+    setPwdMsg(null);
+    if (pwd.nueva !== pwd.confirmar) {
+      setPwdMsg({ tipo: "error", texto: "Las contraseñas nuevas no coinciden." });
+      return;
+    }
+    setPwdCargando(true);
+    try {
+      const r = await api.cambiarClave(pwd.actual, pwd.nueva);
+      setPwdMsg({ tipo: "ok", texto: r.mensaje });
+      setPwd({ actual: "", nueva: "", confirmar: "" });
+    } catch (err) {
+      setPwdMsg({ tipo: "error", texto: err.message });
+    } finally {
+      setPwdCargando(false);
+    }
+  }
 
   function set(campo, valor) {
     setCfg((c) => ({ ...c, [campo]: valor }));
@@ -134,7 +158,7 @@ export default function Configuracion() {
           <div className="card p-5">
             <div className="mb-3 flex items-center gap-2">
               <Users size={18} className="text-brand-500" />
-              <h2 className="font-semibold text-fg">Credenciales</h2>
+              <h2 className="font-semibold text-fg">Credenciales del stream</h2>
             </div>
             <div className="space-y-3">
               <Campo label="Usuario fuente (DJ)">
@@ -143,9 +167,60 @@ export default function Configuracion() {
               <Campo label="Contraseña fuente">
                 <input type="password" className="input" defaultValue="hackme123" />
               </Campo>
-              <Campo label="Contraseña admin">
-                <input type="password" className="input" defaultValue="admin123" />
+            </div>
+          </div>
+
+          {/* Cambiar contraseña del panel (real) */}
+          <div className="card p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <KeyRound size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Contraseña del panel</h2>
+            </div>
+            <div className="space-y-3">
+              <Campo label="Contraseña actual">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.actual}
+                  onChange={(e) => setPwd((p) => ({ ...p, actual: e.target.value }))}
+                />
               </Campo>
+              <Campo label="Nueva contraseña">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.nueva}
+                  onChange={(e) => setPwd((p) => ({ ...p, nueva: e.target.value }))}
+                />
+              </Campo>
+              <Campo label="Confirmar nueva">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.confirmar}
+                  onChange={(e) => setPwd((p) => ({ ...p, confirmar: e.target.value }))}
+                />
+              </Campo>
+              {pwdMsg && (
+                <p
+                  className={`rounded-lg px-3 py-2 text-sm ${
+                    pwdMsg.tipo === "ok"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-red-500/10 text-red-500"
+                  }`}
+                >
+                  {pwdMsg.texto}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={cambiarClave}
+                className="btn-primary w-full"
+                disabled={pwdCargando}
+              >
+                {pwdCargando ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                Actualizar contraseña
+              </button>
             </div>
           </div>
 

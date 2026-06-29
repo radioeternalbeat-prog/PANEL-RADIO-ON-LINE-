@@ -116,12 +116,14 @@ function vacia(tabla) {
 }
 
 function sembrar() {
-  // Usuario administrador por defecto.
+  // Usuario administrador por defecto (configurable por entorno).
   if (vacia("usuarios")) {
+    const adminUser = process.env.ADMIN_USER || "admin";
+    const adminPass = process.env.ADMIN_PASSWORD || "admin123";
     db.prepare(
       `INSERT INTO usuarios (usuario, nombre, rol, plan, clave_hash)
        VALUES (?, ?, ?, ?, ?)`
-    ).run("admin", "Administrador", "Administrador", "Profesional", bcrypt.hashSync("admin123", 10));
+    ).run(adminUser, "Administrador", "Administrador", "Profesional", bcrypt.hashSync(adminPass, 10));
   }
 
   if (vacia("estaciones")) {

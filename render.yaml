@@ -21,3 +21,11 @@ services:
         value: "22"
       - key: JWT_SECRET
         generateValue: true
+      - key: WEBHOOK_TOKEN
+        generateValue: true
+      # Define una contraseña de admin fuerte (se usa al crear la BD por primera vez).
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Opcional: restringe CORS a tu dominio, ej. https://tu-sitio.onrender.com
+      - key: CORS_ORIGIN
+        sync: false

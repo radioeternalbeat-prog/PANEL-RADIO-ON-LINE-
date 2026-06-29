@@ -53,6 +53,9 @@ export const usuariosRepo = {
   porId(id) {
     return db.prepare("SELECT * FROM usuarios WHERE id = ?").get(id);
   },
+  cambiarClave(id, claveHash) {
+    db.prepare("UPDATE usuarios SET clave_hash = ? WHERE id = ?").run(claveHash, id);
+  },
 };
 
 // ---------- Estaciones ----------

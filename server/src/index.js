@@ -21,7 +21,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
+const origenesPermitidos = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
+  : null;
+app.use(cors(origenesPermitidos ? { origin: origenesPermitidos } : {}));
 // Límite alto para permitir la importación de iTunes Library.xml (puede pesar varios MB).
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -37,6 +41,11 @@ app.use("/uploads", express.static(UPLOADS_DIR));
 // Webhook público para recibir mensajes de WhatsApp (Twilio / Meta Cloud API).
 // Configura la URL de tu proveedor apuntando aquí. Acepta formatos comunes.
 app.post("/api/webhooks/whatsapp", (req, res) => {
+  // Protección opcional: si defines WEBHOOK_TOKEN, exige ?token=... en la URL.
+  const requerido = process.env.WEBHOOK_TOKEN;
+  if (requerido && req.query.token !== requerido) {
+    return res.status(401).json({ mensaje: "Token de webhook inválido." });
+  }
   const b = req.body || {};
   // Twilio: Body, From, ProfileName | Meta/genérico: text/message, from, name
   const texto = b.Body || b.text || b.message || b.mensaje;
