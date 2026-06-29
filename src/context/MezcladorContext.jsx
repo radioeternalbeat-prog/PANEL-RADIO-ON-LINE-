@@ -15,6 +15,7 @@ const MezcladorContext = createContext(null);
 export function MezcladorProvider({ children }) {
   const cargadorRef = useRef(null);
   const preparadorRef = useRef(null);
+  const nodosRef = useRef(null);
 
   // Estado del monitor de audífonos.
   const [cue, setCue] = useState({ A: false, B: false });
@@ -32,6 +33,11 @@ export function MezcladorProvider({ children }) {
 
   const cargarEnDeck = useCallback((id, pista) => cargadorRef.current?.(id, pista), []);
   const prepararAudio = useCallback(() => preparadorRef.current?.(), []);
+  const registrarNodos = useCallback((fn) => {
+    nodosRef.current = fn;
+  }, []);
+  // Devuelve los nodos del grafo de audio del mezclador (ctx, masterGain, duckGain).
+  const obtenerNodos = useCallback(() => nodosRef.current?.(), []);
 
   const alternarCue = useCallback(
     (id) => {
@@ -56,6 +62,8 @@ export function MezcladorProvider({ children }) {
       cargarEnDeck,
       registrarPreparador,
       prepararAudio,
+      registrarNodos,
+      obtenerNodos,
       cue,
       alternarCue,
       monitorVol,
@@ -72,6 +80,8 @@ export function MezcladorProvider({ children }) {
       cargarEnDeck,
       registrarPreparador,
       prepararAudio,
+      registrarNodos,
+      obtenerNodos,
       cue,
       alternarCue,
       monitorVol,

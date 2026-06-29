@@ -3,6 +3,7 @@ import { MezcladorProvider } from "../context/MezcladorContext";
 import OnAir from "../components/transmision/OnAir";
 import PanelMezclador from "../components/transmision/PanelMezclador";
 import PanelReproductor from "../components/transmision/PanelReproductor";
+import PanelMicrofonos from "../components/transmision/PanelMicrofonos";
 import PanelCola from "../components/transmision/PanelCola";
 import PanelReloj from "../components/transmision/PanelReloj";
 import PanelClima from "../components/transmision/PanelClima";
@@ -27,9 +28,12 @@ export default function Transmision() {
         {/* Mezclador DJ en vivo (centro de la cabina) */}
         <PanelMezclador />
 
-        {/* Fila 1: Reproductor · Cola · (Reloj + Clima) — alineados arriba, altura natural */}
+        {/* Fila 1: (Reproductor + Micrófonos) · Cola · (Reloj + Clima + Audífonos) */}
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-          <PanelReproductor />
+          <div className="flex flex-col gap-5">
+            <PanelReproductor />
+            <PanelMicrofonos />
+          </div>
           <PanelCola />
           <div className="flex flex-col gap-5">
             <PanelReloj />

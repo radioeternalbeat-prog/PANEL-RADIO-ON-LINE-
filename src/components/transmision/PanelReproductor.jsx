@@ -23,12 +23,10 @@ export default function PanelReproductor() {
     indiceCola,
   } = usePlayer();
 
-  const pct = progreso.total ? (progreso.actual / progreso.total) * 100 : 0;
-
   return (
-    <div className="card relative flex h-full flex-col overflow-hidden p-5">
-      {/* Indicador On Air */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="card p-4">
+      {/* Encabezado */}
+      <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Reproductor</h3>
         {reproduciendo ? (
           <span className="badge bg-red-500/15 text-red-500">
@@ -39,57 +37,40 @@ export default function PanelReproductor() {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center">
-        {/* Carátula */}
-        <div className="relative mb-4 h-40 w-40 overflow-hidden rounded-2xl bg-surface2 shadow-md">
+      {/* Carátula + título (compacto, horizontal) */}
+      <div className="flex items-center gap-3">
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface2">
           {medioActual?.artwork ? (
             <img src={medioActual.artwork} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-brand-grad text-white">
-              <Music2 size={56} />
+              <Music2 size={24} />
             </div>
           )}
         </div>
-
-        {/* Título / artista */}
-        <p className="line-clamp-1 text-center text-lg font-bold text-fg">
-          {medioActual?.titulo || "Sin reproducción"}
-        </p>
-        <p className="line-clamp-1 text-center text-sm text-muted">
-          {medioActual?.subtitulo || "Carga la biblioteca para empezar"}
-        </p>
-
-        {/* Barra de progreso */}
-        <div className="mt-4 w-full">
-          <input
-            type="range"
-            min="0"
-            max={progreso.total || 0}
-            value={progreso.actual || 0}
-            onChange={(e) => buscar(Number(e.target.value))}
-            className="h-1.5 w-full cursor-pointer accent-brand-500"
-          />
-          <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted">
-            <span>{fmt(progreso.actual)}</span>
-            <span>{fmt(progreso.total)}</span>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-fg">
+            {medioActual?.titulo || "Sin reproducción"}
+          </p>
+          <p className="truncate text-xs text-muted">
+            {medioActual?.subtitulo || "Carga la biblioteca para empezar"}
+          </p>
         </div>
-
-        {/* Controles */}
-        <div className="mt-3 flex items-center gap-4">
+        {/* Controles compactos */}
+        <div className="flex items-center gap-2">
           <button
             onClick={anterior}
             disabled={indiceCola <= 0}
             className="text-muted transition hover:text-fg disabled:opacity-40"
             title="Anterior"
           >
-            <SkipBack size={22} />
+            <SkipBack size={18} />
           </button>
           <button
             onClick={alternar}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-glow transition hover:bg-brand-500"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-white shadow-glow transition hover:bg-brand-500"
           >
-            {reproduciendo ? <Pause size={26} /> : <Play size={26} className="ml-0.5" />}
+            {reproduciendo ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
           </button>
           <button
             onClick={siguiente}
@@ -97,23 +78,39 @@ export default function PanelReproductor() {
             className="text-muted transition hover:text-fg disabled:opacity-40"
             title="Siguiente"
           >
-            <SkipForward size={22} />
+            <SkipForward size={18} />
           </button>
         </div>
+      </div>
 
-        {/* Volumen */}
-        <div className="mt-4 flex w-full items-center gap-2">
-          <Volume2 size={16} className="text-muted" />
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volumen}
-            onChange={(e) => setVolumen(Number(e.target.value))}
-            className="h-1 flex-1 cursor-pointer accent-brand-500"
-          />
+      {/* Barra de progreso */}
+      <div className="mt-3">
+        <input
+          type="range"
+          min="0"
+          max={progreso.total || 0}
+          value={progreso.actual || 0}
+          onChange={(e) => buscar(Number(e.target.value))}
+          className="h-1.5 w-full cursor-pointer accent-brand-500"
+        />
+        <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted">
+          <span>{fmt(progreso.actual)}</span>
+          <span>{fmt(progreso.total)}</span>
         </div>
+      </div>
+
+      {/* Volumen */}
+      <div className="mt-2 flex items-center gap-2">
+        <Volume2 size={15} className="text-muted" />
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volumen}
+          onChange={(e) => setVolumen(Number(e.target.value))}
+          className="h-1 flex-1 cursor-pointer accent-brand-500"
+        />
       </div>
     </div>
   );
