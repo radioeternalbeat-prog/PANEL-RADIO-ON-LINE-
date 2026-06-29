@@ -100,6 +100,9 @@ export const api = {
   actualizarPrograma: (id, datos) =>
     request(`/autodj/programacion/${id}`, { metodo: "PUT", cuerpo: datos }),
   eliminarPrograma: (id) => request(`/autodj/programacion/${id}`, { metodo: "DELETE" }),
+  inserciones: () => request("/autodj/inserciones"),
+  actualizarInsercion: (id, datos) =>
+    request(`/autodj/inserciones/${id}`, { metodo: "PUT", cuerpo: datos }),
 
   // iTunes
   buscarItunes: (termino, limite = 25) =>

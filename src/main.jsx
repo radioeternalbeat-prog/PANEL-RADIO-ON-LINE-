@@ -6,6 +6,7 @@ import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { OnAirProvider } from "./context/OnAirContext.jsx";
 import { PlayerProvider } from "./context/PlayerContext.jsx";
+import { AutomatizacionProvider } from "./context/AutomatizacionContext.jsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")).render(
@@ -15,7 +16,9 @@ createRoot(document.getElementById("root")).render(
         <AuthProvider>
           <OnAirProvider>
             <PlayerProvider>
-              <App />
+              <AutomatizacionProvider>
+                <App />
+              </AutomatizacionProvider>
             </PlayerProvider>
           </OnAirProvider>
         </AuthProvider>

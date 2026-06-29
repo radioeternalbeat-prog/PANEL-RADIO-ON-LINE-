@@ -5,6 +5,7 @@ import {
   Clock,
   ListMusic,
   Loader2,
+  Megaphone,
   Music2,
   Music4,
   Pause,
@@ -12,14 +13,17 @@ import {
   Play,
   PlayCircle,
   Plus,
+  Power,
   Radio,
   Search,
+  Sparkles,
   Trash2,
   Upload,
   UploadCloud,
 } from "lucide-react";
 import { api } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
+import { useAutomatizacion } from "../context/AutomatizacionContext";
 import BuscadorItunes from "../components/BuscadorItunes";
 import ImportadorCanciones from "../components/ImportadorCanciones";
 import ModalPlaylist from "../components/ModalPlaylist";
@@ -61,6 +65,17 @@ export default function AutoDJ() {
   const [ahora, setAhora] = useState(new Date());
   const inputXml = useRef(null);
   const { reproducirPista, reproducirLista, encolar, medioActual, reproduciendo, alternar } = usePlayer();
+  const {
+    auto,
+    activarAuto,
+    desactivarAuto,
+    inserciones,
+    reproducirInsercion,
+    toggleInsercionActiva,
+    cambiarCadaMin,
+    ultimaCuña,
+    recargar: recargarAutomatizacion,
+  } = useAutomatizacion();
 
   // Reevalúa el bloque al aire cada 30 s.
   useEffect(() => {
@@ -72,6 +87,7 @@ export default function AutoDJ() {
 
   function recargarProgramacion() {
     api.programacion().then(setProgramacion).catch(() => {});
+    recargarAutomatizacion(); // mantiene el motor sincronizado con los cambios
   }
 
   async function eliminarPrograma(id, e) {
@@ -419,7 +435,132 @@ export default function AutoDJ() {
       {/* Programación */}
       {tab === "programacion" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Piloto automático */}
+          <div className="card overflow-hidden">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-4 p-5 ${
+                auto ? "bg-brand-grad text-white" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                    auto ? "bg-white/20" : "bg-brand-500/15 text-brand-500"
+                  }`}
+                >
+                  <Sparkles size={24} />
+                </div>
+                <div>
+                  <h3 className={`font-bold ${auto ? "text-white" : "text-fg"}`}>Piloto automático</h3>
+                  <p className={`text-sm ${auto ? "text-white/80" : "text-muted"}`}>
+                    {auto
+                      ? "Activo: cambia de playlist por horario e inserta cuñas solo."
+                      : "Manual: tú controlas la reproducción y las cuñas."}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => (auto ? desactivarAuto() : activarAuto())}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                  auto
+                    ? "bg-white text-brand-600 hover:bg-white/90"
+                    : "bg-brand-600 text-white hover:bg-brand-500"
+                }`}
+              >
+                <Power size={16} /> {auto ? "Desactivar" : "Activar automático"}
+              </button>
+            </div>
+            {auto && ultimaCuña && (
+              <div className="border-t border-white/20 bg-black/10 px-5 py-2 text-xs text-white/90">
+                Última cuña: <span className="font-semibold">{ultimaCuña.nombre}</span> ·{" "}
+                {ultimaCuña.hora.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            )}
+          </div>
+
+          {/* Reglas de inserción: jingles y publicidad */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {inserciones.map((ins) => {
+              const esJingle = ins.tipo === "jingle";
+              const Icono = esJingle ? Sparkles : Megaphone;
+              return (
+                <div key={ins.id} className="card p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                          esJingle
+                            ? "bg-accent-500/15 text-accent-500"
+                            : "bg-brand-500/15 text-brand-500"
+                        }`}
+                      >
+                        <Icono size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-fg">{ins.nombre}</h4>
+                        <p className="text-xs text-muted">
+                          {ins.playlist} · {ins.playlistPistas} pistas
+                        </p>
+                      </div>
+                    </div>
+                    {/* Interruptor on/off */}
+                    <button
+                      onClick={() => toggleInsercionActiva(ins)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                        ins.activa ? "bg-brand-600" : "bg-surface2"
+                      }`}
+                      title={ins.activa ? "Activa" : "Inactiva"}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                          ins.activa ? "left-[22px]" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-muted">Frecuencia</label>
+                    <select
+                      className="input h-9 w-auto py-1 text-sm"
+                      value={ins.cadaMin}
+                      onChange={(e) => cambiarCadaMin(ins, Number(e.target.value))}
+                    >
+                      <option value={15}>Cada 15 min</option>
+                      <option value={20}>Cada 20 min</option>
+                      <option value={30}>Cada 30 min</option>
+                      <option value={45}>Cada 45 min</option>
+                      <option value={60}>Cada 1 hora</option>
+                      <option value={120}>Cada 2 horas</option>
+                    </select>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      className="btn-ghost flex-1"
+                      onClick={() =>
+                        setPlaylistAbierta({ id: ins.playlistId, nombre: ins.playlist, tipo: ins.tipo })
+                      }
+                    >
+                      <ListMusic size={15} /> Gestionar
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      title="Reproducir una cuña ahora"
+                      onClick={async () => {
+                        const ok = await reproducirInsercion(ins);
+                        if (!ok) setAviso(`Sube audios a «${ins.playlist}» para poder reproducir cuñas.`);
+                      }}
+                    >
+                      <PlayCircle size={15} /> Probar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <p className="text-sm text-muted">
               Programa qué playlist suena en cada franja horaria. El bloque vigente se marca «Al aire».
             </p>
@@ -556,7 +697,10 @@ export default function AutoDJ() {
         <ModalPlaylist
           playlist={playlistAbierta}
           onCerrar={() => setPlaylistAbierta(null)}
-          onCambios={recargarPlaylists}
+          onCambios={() => {
+            recargarPlaylists();
+            recargarAutomatizacion();
+          }}
         />
       )}
 

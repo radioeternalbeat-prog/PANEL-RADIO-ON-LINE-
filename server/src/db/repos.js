@@ -350,6 +350,68 @@ export const programacionRepo = {
   },
 };
 
+function mapInsercion(r) {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    tipo: r.tipo,
+    playlistId: r.playlist_id || null,
+    playlist: r.pl_nombre || "",
+    playlistPistas: r.pl_pistas || 0,
+    cadaMin: r.cada_min,
+    activa: !!r.activa,
+  };
+}
+
+export const insercionesRepo = {
+  listar() {
+    return db
+      .prepare(
+        `SELECT i.*, pl.nombre AS pl_nombre,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = i.playlist_id) AS pl_pistas
+         FROM inserciones i
+         LEFT JOIN playlists pl ON pl.id = i.playlist_id
+         ORDER BY i.cada_min`
+      )
+      .all()
+      .map(mapInsercion);
+  },
+  obtener(id) {
+    const r = db
+      .prepare(
+        `SELECT i.*, pl.nombre AS pl_nombre,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = i.playlist_id) AS pl_pistas
+         FROM inserciones i
+         LEFT JOIN playlists pl ON pl.id = i.playlist_id
+         WHERE i.id = ?`
+      )
+      .get(id);
+    return r ? mapInsercion(r) : null;
+  },
+  actualizar(id, d) {
+    const actual = db.prepare("SELECT * FROM inserciones WHERE id = ?").get(id);
+    if (!actual) return null;
+    const sets = [];
+    const vals = [];
+    if (d.activa !== undefined) {
+      sets.push("activa = ?");
+      vals.push(d.activa ? 1 : 0);
+    }
+    if (d.cadaMin !== undefined) {
+      sets.push("cada_min = ?");
+      vals.push(Number(d.cadaMin));
+    }
+    if (d.nombre !== undefined) {
+      sets.push("nombre = ?");
+      vals.push(d.nombre);
+    }
+    if (sets.length) {
+      db.prepare(`UPDATE inserciones SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);
+    }
+    return this.obtener(id);
+  },
+};
+
 // ---------- Estadísticas ----------
 export const estadisticasRepo = {
   oyentesPorPais() {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
-import { pistasRepo, playlistsRepo, programacionRepo } from "../db/repos.js";
+import { pistasRepo, playlistsRepo, programacionRepo, insercionesRepo } from "../db/repos.js";
 import { UPLOADS_DIR } from "./samples.routes.js";
 
 const router = Router();
@@ -135,6 +135,18 @@ router.delete("/programacion/:id", (req, res) => {
   const p = programacionRepo.eliminar(Number(req.params.id));
   if (!p) return res.status(404).json({ mensaje: "Bloque no encontrado." });
   res.json({ mensaje: "Bloque eliminado.", programa: p });
+});
+
+// GET /api/autodj/inserciones  (reglas de cuñas: jingles / publicidad)
+router.get("/inserciones", (req, res) => {
+  res.json(insercionesRepo.listar());
+});
+
+// PUT /api/autodj/inserciones/:id  { activa?, cadaMin?, nombre? }
+router.put("/inserciones/:id", (req, res) => {
+  const i = insercionesRepo.actualizar(Number(req.params.id), req.body || {});
+  if (!i) return res.status(404).json({ mensaje: "Inserción no encontrada." });
+  res.json(i);
 });
 
 export default router;

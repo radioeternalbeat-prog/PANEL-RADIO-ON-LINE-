@@ -116,6 +116,15 @@ function crearEsquema() {
       creado INTEGER,
       PRIMARY KEY (playlist_id, pista_id)
     );
+
+    CREATE TABLE IF NOT EXISTS inserciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      tipo TEXT DEFAULT 'jingle',
+      playlist_id INTEGER,
+      cada_min INTEGER DEFAULT 30,
+      activa INTEGER DEFAULT 1
+    );
   `);
 }
 
@@ -223,6 +232,31 @@ try {
     WHERE playlist_id IS NULL
       AND EXISTS (SELECT 1 FROM playlists WHERE playlists.nombre = programacion.playlist);
   `);
+} catch {
+  /* sin cambios */
+}
+
+// Garantiza que exista una playlist por nombre y devuelve su id (idempotente).
+function asegurarPlaylist(nombre, tipo) {
+  const fila = db.prepare("SELECT id FROM playlists WHERE nombre = ?").get(nombre);
+  if (fila) return fila.id;
+  const info = db
+    .prepare("INSERT INTO playlists (nombre, tipo, pistas, activa, peso) VALUES (?,?,0,1,0)")
+    .run(nombre, tipo);
+  return info.lastInsertRowid;
+}
+
+// Playlists dedicadas a cuñas (jingles y publicidad) + reglas de inserción 24/7.
+try {
+  const idJingles = asegurarPlaylist("Jingles", "Jingle");
+  const idPublicidad = asegurarPlaylist("Publicidad / Avisos", "Publicidad");
+  if (vacia("inserciones")) {
+    const ins = db.prepare(
+      "INSERT INTO inserciones (nombre, tipo, playlist_id, cada_min, activa) VALUES (?,?,?,?,?)"
+    );
+    ins.run("Jingles e IDs", "jingle", idJingles, 30, 1);
+    ins.run("Avisos Publicitarios", "publicidad", idPublicidad, 60, 1);
+  }
 } catch {
   /* sin cambios */
 }
