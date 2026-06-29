@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "../../api/client";
 import { reportarNivel } from "../../audio/nivelBus";
+import { urlRecurso } from "../../api/client";
 import { useMezclador } from "../../context/MezcladorContext";
 
 // Crossfade de igual potencia: x=0 -> todo A, x=1 -> todo B.
@@ -335,13 +336,14 @@ export default function PanelMezclador() {
     const pista = await resolverPreview(pistaOriginal);
     if (!pista.previewUrl) return; // no se encontró audio reproducible
 
-    d.audio.src = pista.previewUrl;
+    const urlAudio = urlRecurso(pista.previewUrl);
+    d.audio.src = urlAudio;
     d.audio.load();
     setters[id]((s) => ({ ...s, track: pista }));
 
     // Forma de onda (decodificar audio).
     try {
-      const resp = await fetch(pista.previewUrl);
+      const resp = await fetch(urlAudio);
       const arr = await resp.arrayBuffer();
       const audioBuf = await g.ctx.decodeAudioData(arr);
       const datos = audioBuf.getChannelData(0);

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { reportarNivel } from "../audio/nivelBus";
+import { urlRecurso } from "../api/client";
 
 const PlayerContext = createContext(null);
 
@@ -104,7 +105,7 @@ export function PlayerProvider({ children }) {
       titulo: pista.titulo,
       subtitulo: pista.artista,
       artwork: pista.artwork || null,
-      url: pista.previewUrl || null,
+      url: pista.previewUrl ? urlRecurso(pista.previewUrl) : null,
     };
   }
 

@@ -127,6 +127,24 @@ export async function subirSample({ archivo, nombre, categoria, color }) {
   return datos;
 }
 
+// Sube una canción completa a la biblioteca vía multipart/form-data.
+export async function subirCancion({ archivo, titulo, artista }) {
+  const fd = new FormData();
+  fd.append("archivo", archivo);
+  if (titulo) fd.append("titulo", titulo);
+  if (artista) fd.append("artista", artista);
+
+  const token = getToken();
+  const resp = await fetch(`${API_URL}/autodj/subir`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir la canción.");
+  return datos;
+}
+
 // URL absoluta para un recurso servido por el backend (ej. /uploads/..).
 export function urlRecurso(ruta) {
   if (!ruta) return ruta;
