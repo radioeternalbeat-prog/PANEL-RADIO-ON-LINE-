@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Music3, Pause, Play, Plus, Trash2, Zap } from "lucide-react";
+import { AudioLines, Loader2, Music3, Pause, Play, Plus, Trash2, Zap } from "lucide-react";
 import { api, subirSample, urlRecurso } from "../../api/client";
 
 const SLOTS = 6;
@@ -7,7 +7,7 @@ const SLOTS = 6;
 const CATEGORIAS = [
   { id: "jingle", label: "Jingles", Icon: Music3, grad: "from-brand-500 to-brand-700" },
   { id: "efecto", label: "Efectos", Icon: Zap, grad: "from-amber-500 to-orange-600" },
-  { id: "voz", label: "Voces", Icon: Mic, grad: "from-cyan-500 to-sky-600" },
+  { id: "voz", label: "Samples", Icon: AudioLines, grad: "from-cyan-500 to-sky-600" },
 ];
 
 export default function PanelSoundboard() {
