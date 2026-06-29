@@ -114,4 +114,27 @@ router.get("/programacion", (req, res) => {
   res.json(programacionRepo.listar());
 });
 
+// POST /api/autodj/programacion  { nombre, inicio, fin, playlistId, dias }
+router.post("/programacion", (req, res) => {
+  const { nombre, inicio, fin, playlistId, dias } = req.body || {};
+  if (!nombre || !nombre.trim()) return res.status(400).json({ mensaje: "El nombre es obligatorio." });
+  res.status(201).json(
+    programacionRepo.crear({ nombre: nombre.trim(), inicio, fin, playlistId, dias })
+  );
+});
+
+// PUT /api/autodj/programacion/:id
+router.put("/programacion/:id", (req, res) => {
+  const p = programacionRepo.actualizar(Number(req.params.id), req.body || {});
+  if (!p) return res.status(404).json({ mensaje: "Bloque no encontrado." });
+  res.json(p);
+});
+
+// DELETE /api/autodj/programacion/:id
+router.delete("/programacion/:id", (req, res) => {
+  const p = programacionRepo.eliminar(Number(req.params.id));
+  if (!p) return res.status(404).json({ mensaje: "Bloque no encontrado." });
+  res.json({ mensaje: "Bloque eliminado.", programa: p });
+});
+
 export default router;

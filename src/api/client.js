@@ -96,6 +96,10 @@ export const api = {
   quitarPistaPlaylist: (id, pistaId) =>
     request(`/autodj/playlists/${id}/pistas/${pistaId}`, { metodo: "DELETE" }),
   programacion: () => request("/autodj/programacion"),
+  crearPrograma: (datos) => request("/autodj/programacion", { metodo: "POST", cuerpo: datos }),
+  actualizarPrograma: (id, datos) =>
+    request(`/autodj/programacion/${id}`, { metodo: "PUT", cuerpo: datos }),
+  eliminarPrograma: (id) => request(`/autodj/programacion/${id}`, { metodo: "DELETE" }),
 
   // iTunes
   buscarItunes: (termino, limite = 25) =>

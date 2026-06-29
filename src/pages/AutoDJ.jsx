@@ -8,8 +8,11 @@ import {
   Music2,
   Music4,
   Pause,
+  Pencil,
   Play,
+  PlayCircle,
   Plus,
+  Radio,
   Search,
   Trash2,
   Upload,
@@ -20,6 +23,8 @@ import { usePlayer } from "../context/PlayerContext";
 import BuscadorItunes from "../components/BuscadorItunes";
 import ImportadorCanciones from "../components/ImportadorCanciones";
 import ModalPlaylist from "../components/ModalPlaylist";
+import ModalPrograma from "../components/ModalPrograma";
+import { bloqueActivo, etiquetaDias } from "../utils/programacion";
 
 const tabs = [
   { id: "biblioteca", label: "Biblioteca", icon: Music4 },
@@ -52,8 +57,52 @@ export default function AutoDJ() {
   const [playlistAbierta, setPlaylistAbierta] = useState(null);
   const [creandoPlaylist, setCreandoPlaylist] = useState(false);
   const [nombreNueva, setNombreNueva] = useState("");
+  const [programaEditar, setProgramaEditar] = useState(null); // objeto, {} (nuevo) o null
+  const [ahora, setAhora] = useState(new Date());
   const inputXml = useRef(null);
-  const { reproducirPista, medioActual, reproduciendo, alternar } = usePlayer();
+  const { reproducirPista, reproducirLista, encolar, medioActual, reproduciendo, alternar } = usePlayer();
+
+  // Reevalúa el bloque al aire cada 30 s.
+  useEffect(() => {
+    const t = setInterval(() => setAhora(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const programaAlAire = bloqueActivo(programacion, ahora);
+
+  function recargarProgramacion() {
+    api.programacion().then(setProgramacion).catch(() => {});
+  }
+
+  async function eliminarPrograma(id, e) {
+    e?.stopPropagation();
+    if (!confirm("¿Eliminar este bloque de programación?")) return;
+    try {
+      await api.eliminarPrograma(id);
+      setProgramacion((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setAviso(err.message || "No se pudo eliminar el bloque.");
+    }
+  }
+
+  // Carga las canciones de la playlist del bloque en la cola y empieza a reproducir.
+  async function emitirPlaylist(programa) {
+    if (!programa?.playlistId) {
+      setAviso("Este bloque no tiene una playlist asociada.");
+      return;
+    }
+    try {
+      const pistas = await api.pistasDePlaylist(programa.playlistId);
+      if (!pistas.length) {
+        setAviso(`La playlist «${programa.playlist}» está vacía.`);
+        return;
+      }
+      reproducirLista(pistas, 0);
+      setAviso(`Reproduciendo «${programa.playlist}» (${pistas.length} canciones).`);
+    } catch (err) {
+      setAviso(err.message || "No se pudo cargar la playlist.");
+    }
+  }
 
   async function cargarBiblioteca(q = "") {
     const b = await api.biblioteca(q);
@@ -369,32 +418,122 @@ export default function AutoDJ() {
 
       {/* Programación */}
       {tab === "programacion" && (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface2 text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="px-5 py-3">Evento</th>
-                  <th className="px-5 py-3">Inicio</th>
-                  <th className="px-5 py-3">Fin</th>
-                  <th className="px-5 py-3">Playlist</th>
-                  <th className="px-5 py-3">Días</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {programacion.map((p) => (
-                  <tr key={p.id} className="hover:bg-surface2">
-                    <td className="px-5 py-3 font-medium text-fg">{p.nombre}</td>
-                    <td className="px-5 py-3 text-muted">{p.inicio}</td>
-                    <td className="px-5 py-3 text-muted">{p.fin}</td>
-                    <td className="px-5 py-3 text-muted">{p.playlist}</td>
-                    <td className="px-5 py-3">
-                      <span className="badge bg-brand-500/10 text-brand-500">{p.dias}</span>
-                    </td>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted">
+              Programa qué playlist suena en cada franja horaria. El bloque vigente se marca «Al aire».
+            </p>
+            <button className="btn-primary" onClick={() => setProgramaEditar({})}>
+              <Plus size={16} /> Nuevo bloque
+            </button>
+          </div>
+
+          {/* Banner: en emisión ahora */}
+          {programaAlAire ? (
+            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-brand-500/40 bg-brand-500/10 p-4">
+              <span className="flex items-center gap-2 rounded-full bg-brand-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                </span>
+                Al aire ahora
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-fg">{programaAlAire.nombre}</p>
+                <p className="text-sm text-muted">
+                  {programaAlAire.inicio}–{programaAlAire.fin} · Playlist:{" "}
+                  <span className="font-semibold text-brand-500">{programaAlAire.playlist || "—"}</span>
+                </p>
+              </div>
+              <button className="btn-primary" onClick={() => emitirPlaylist(programaAlAire)}>
+                <PlayCircle size={16} /> Emitir ahora
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface2 p-4 text-sm text-muted">
+              <Radio size={16} /> No hay ningún bloque programado para este momento.
+            </div>
+          )}
+
+          {/* Tabla de bloques */}
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-surface2 text-xs uppercase tracking-wide text-muted">
+                  <tr>
+                    <th className="px-5 py-3">Evento</th>
+                    <th className="px-5 py-3">Horario</th>
+                    <th className="px-5 py-3">Playlist</th>
+                    <th className="px-5 py-3">Días</th>
+                    <th className="px-5 py-3 text-right">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {programacion.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-muted">
+                        Aún no hay bloques. Crea el primero con «Nuevo bloque».
+                      </td>
+                    </tr>
+                  )}
+                  {programacion.map((p) => {
+                    const alAire = programaAlAire?.id === p.id;
+                    return (
+                      <tr key={p.id} className={alAire ? "bg-brand-500/5" : "hover:bg-surface2"}>
+                        <td className="px-5 py-3 font-medium text-fg">
+                          <div className="flex items-center gap-2">
+                            {alAire && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" />}
+                            {p.nombre}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-muted">
+                          {p.inicio}–{p.fin}
+                        </td>
+                        <td className="px-5 py-3">
+                          {p.playlistId ? (
+                            <span className="inline-flex items-center gap-1 text-fg">
+                              <ListMusic size={14} className="text-brand-500" />
+                              {p.playlist}
+                              <span className="text-xs text-muted">({p.playlistPistas})</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-amber-500">Sin playlist</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="badge bg-brand-500/10 text-brand-500">{etiquetaDias(p.dias)}</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => emitirPlaylist(p)}
+                              title="Emitir esta playlist ahora"
+                              className="rounded-lg p-2 text-muted hover:bg-brand-500/10 hover:text-brand-500"
+                            >
+                              <PlayCircle size={16} />
+                            </button>
+                            <button
+                              onClick={() => setProgramaEditar(p)}
+                              title="Editar bloque"
+                              className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-fg"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => eliminarPrograma(p.id, e)}
+                              title="Eliminar bloque"
+                              className="rounded-lg p-2 text-muted hover:bg-red-500/10 hover:text-red-500"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -418,6 +557,15 @@ export default function AutoDJ() {
           playlist={playlistAbierta}
           onCerrar={() => setPlaylistAbierta(null)}
           onCambios={recargarPlaylists}
+        />
+      )}
+
+      {programaEditar && (
+        <ModalPrograma
+          programa={programaEditar.id ? programaEditar : null}
+          playlists={playlists}
+          onCerrar={() => setProgramaEditar(null)}
+          onGuardado={recargarProgramacion}
         />
       )}
     </div>

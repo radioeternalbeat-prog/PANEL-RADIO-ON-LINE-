@@ -45,6 +45,21 @@ function mapPlaylist(r) {
   return { id: r.id, nombre: r.nombre, tipo: r.tipo, pistas: r.pistas, activa: !!r.activa, peso: r.peso };
 }
 
+function mapPrograma(r) {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    inicio: r.inicio,
+    fin: r.fin,
+    dias: r.dias,
+    playlistId: r.playlist_id || null,
+    // Nombre real de la playlist enlazada; si no existe, el texto histórico.
+    playlist: r.pl_nombre || r.playlist || "",
+    playlistActiva: r.pl_activa == null ? null : !!r.pl_activa,
+    playlistPistas: r.pl_pistas || 0,
+  };
+}
+
 // ---------- Usuarios ----------
 export const usuariosRepo = {
   porUsuario(usuario) {
@@ -271,7 +286,67 @@ export const playlistsRepo = {
 
 export const programacionRepo = {
   listar() {
-    return db.prepare("SELECT * FROM programacion ORDER BY id").all();
+    return db
+      .prepare(
+        `SELECT pr.*, pl.nombre AS pl_nombre, pl.activa AS pl_activa,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = pr.playlist_id) AS pl_pistas
+         FROM programacion pr
+         LEFT JOIN playlists pl ON pl.id = pr.playlist_id
+         ORDER BY pr.inicio`
+      )
+      .all()
+      .map(mapPrograma);
+  },
+  obtener(id) {
+    const r = db
+      .prepare(
+        `SELECT pr.*, pl.nombre AS pl_nombre, pl.activa AS pl_activa,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = pr.playlist_id) AS pl_pistas
+         FROM programacion pr
+         LEFT JOIN playlists pl ON pl.id = pr.playlist_id
+         WHERE pr.id = ?`
+      )
+      .get(id);
+    return r ? mapPrograma(r) : null;
+  },
+  crear({ nombre, inicio, fin, playlistId, dias }) {
+    const pl = playlistId ? db.prepare("SELECT nombre FROM playlists WHERE id = ?").get(playlistId) : null;
+    const info = db
+      .prepare(
+        "INSERT INTO programacion (nombre, inicio, fin, playlist, playlist_id, dias) VALUES (?,?,?,?,?,?)"
+      )
+      .run(nombre, inicio || "00:00", fin || "00:00", pl?.nombre || "", playlistId || null, dias || "");
+    return this.obtener(info.lastInsertRowid);
+  },
+  actualizar(id, d) {
+    const actual = db.prepare("SELECT * FROM programacion WHERE id = ?").get(id);
+    if (!actual) return null;
+    const sets = [];
+    const vals = [];
+    const campos = { nombre: "nombre", inicio: "inicio", fin: "fin", dias: "dias" };
+    for (const [k, col] of Object.entries(campos)) {
+      if (d[k] !== undefined) {
+        sets.push(`${col} = ?`);
+        vals.push(d[k]);
+      }
+    }
+    if (d.playlistId !== undefined) {
+      const pl = d.playlistId
+        ? db.prepare("SELECT nombre FROM playlists WHERE id = ?").get(d.playlistId)
+        : null;
+      sets.push("playlist_id = ?", "playlist = ?");
+      vals.push(d.playlistId || null, pl?.nombre || "");
+    }
+    if (sets.length) {
+      db.prepare(`UPDATE programacion SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);
+    }
+    return this.obtener(id);
+  },
+  eliminar(id) {
+    const p = this.obtener(id);
+    if (!p) return null;
+    db.prepare("DELETE FROM programacion WHERE id = ?").run(id);
+    return p;
   },
 };
 

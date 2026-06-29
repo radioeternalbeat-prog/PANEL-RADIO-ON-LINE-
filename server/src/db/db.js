@@ -207,6 +207,24 @@ try {
 } catch {
   /* la columna ya existe */
 }
+// Migración: vincula la programación a una playlist real (playlist_id).
+try {
+  db.exec("ALTER TABLE programacion ADD COLUMN playlist_id INTEGER");
+} catch {
+  /* la columna ya existe */
+}
 sembrar();
+
+// Tras sembrar: enlaza bloques de programación existentes con su playlist por nombre.
+try {
+  db.exec(`
+    UPDATE programacion
+    SET playlist_id = (SELECT id FROM playlists WHERE playlists.nombre = programacion.playlist)
+    WHERE playlist_id IS NULL
+      AND EXISTS (SELECT 1 FROM playlists WHERE playlists.nombre = programacion.playlist);
+  `);
+} catch {
+  /* sin cambios */
+}
 
 export default db;
