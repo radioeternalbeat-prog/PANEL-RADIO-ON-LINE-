@@ -245,6 +245,7 @@ function mapSample(r) {
     id: r.id,
     nombre: r.nombre,
     categoria: r.categoria,
+    slot: r.slot ?? 0,
     url: r.url,
     color: r.color,
     creado: r.creado,
@@ -255,13 +256,17 @@ export const samplesRepo = {
   listar() {
     return db.prepare("SELECT * FROM samples ORDER BY id DESC").all().map(mapSample);
   },
-  agregar({ nombre, categoria, archivo, url, color }) {
+  agregar({ nombre, categoria, slot, archivo, url, color }) {
+    // Si ya hay un sample en esa categoría+slot, lo reemplaza (libera la caja).
+    if (categoria != null && slot != null) {
+      db.prepare("DELETE FROM samples WHERE categoria = ? AND slot = ?").run(categoria, slot);
+    }
     const info = db
       .prepare(
-        `INSERT INTO samples (nombre, categoria, archivo, url, color, creado)
-         VALUES (?,?,?,?,?,?)`
+        `INSERT INTO samples (nombre, categoria, slot, archivo, url, color, creado)
+         VALUES (?,?,?,?,?,?,?)`
       )
-      .run(nombre, categoria || "efecto", archivo, url, color || null, Date.now());
+      .run(nombre, categoria || "efecto", Number(slot) || 0, archivo, url, color || null, Date.now());
     return mapSample(db.prepare("SELECT * FROM samples WHERE id = ?").get(info.lastInsertRowid));
   },
   obtener(id) {

@@ -43,10 +43,11 @@ router.get("/", (req, res) => {
 // POST /api/samples  (multipart: campo "archivo" + nombre, categoria, color)
 router.post("/", upload.single("archivo"), (req, res) => {
   if (!req.file) return res.status(400).json({ mensaje: "Falta el archivo de audio." });
-  const { nombre, categoria, color } = req.body || {};
+  const { nombre, categoria, color, slot } = req.body || {};
   const sample = samplesRepo.agregar({
     nombre: nombre || req.file.originalname,
     categoria,
+    slot,
     color,
     archivo: req.file.filename,
     url: `/uploads/${req.file.filename}`,

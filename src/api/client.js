@@ -109,12 +109,13 @@ export const api = {
 };
 
 // Sube un sample (audio) vía multipart/form-data.
-export async function subirSample({ archivo, nombre, categoria, color }) {
+export async function subirSample({ archivo, nombre, categoria, color, slot }) {
   const fd = new FormData();
   fd.append("archivo", archivo);
   if (nombre) fd.append("nombre", nombre);
   if (categoria) fd.append("categoria", categoria);
   if (color) fd.append("color", color);
+  if (slot != null) fd.append("slot", String(slot));
 
   const token = getToken();
   const resp = await fetch(`${API_URL}/samples`, {

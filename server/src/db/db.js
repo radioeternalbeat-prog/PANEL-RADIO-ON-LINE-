@@ -93,6 +93,7 @@ function crearEsquema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
       categoria TEXT DEFAULT 'efecto',
+      slot INTEGER DEFAULT 0,
       archivo TEXT NOT NULL,
       url TEXT NOT NULL,
       color TEXT,
@@ -193,6 +194,12 @@ function sembrar() {
 }
 
 crearEsquema();
+// Migración: agrega la columna 'slot' a samples si la BD es de una versión anterior.
+try {
+  db.exec("ALTER TABLE samples ADD COLUMN slot INTEGER DEFAULT 0");
+} catch {
+  /* la columna ya existe */
+}
 sembrar();
 
 export default db;
