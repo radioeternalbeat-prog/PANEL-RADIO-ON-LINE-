@@ -1,5 +1,16 @@
-import { useState } from "react";
-import { Copy, KeyRound, Loader2, Save, Server, Sliders, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  Copy,
+  DatabaseBackup,
+  Download,
+  KeyRound,
+  Loader2,
+  Save,
+  Server,
+  Sliders,
+  Upload,
+  Users,
+} from "lucide-react";
 import { api } from "../api/client";
 import { bitratesSoportados, estaciones, formatosSoportados } from "../data/mockData";
 
@@ -33,6 +44,70 @@ export default function Configuracion() {
   const [pwd, setPwd] = useState({ actual: "", nueva: "", confirmar: "" });
   const [pwdMsg, setPwdMsg] = useState(null);
   const [pwdCargando, setPwdCargando] = useState(false);
+
+  // Respaldo (copia de seguridad).
+  const [bkMsg, setBkMsg] = useState(null);
+  const [exportando, setExportando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const inputBackup = useRef(null);
+
+  async function exportarBackup() {
+    setBkMsg(null);
+    setExportando(true);
+    try {
+      const datos = await api.exportarBackup();
+      const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `eternal-beat-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setBkMsg({
+        tipo: "ok",
+        texto: `Copia descargada (${datos.totalRegistros} registros). Guárdala en un lugar seguro.`,
+      });
+    } catch (err) {
+      setBkMsg({ tipo: "error", texto: err.message || "No se pudo exportar." });
+    } finally {
+      setExportando(false);
+    }
+  }
+
+  function onArchivoBackup(ev) {
+    const archivo = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = async () => {
+      let datos;
+      try {
+        datos = JSON.parse(lector.result);
+      } catch {
+        setBkMsg({ tipo: "error", texto: "El archivo no es una copia válida (JSON inválido)." });
+        return;
+      }
+      if (
+        !confirm(
+          "Esto REEMPLAZARÁ todos los datos actuales (estaciones, playlists, programación, etc.) por los de la copia. ¿Continuar?"
+        )
+      )
+        return;
+      setImportando(true);
+      setBkMsg(null);
+      try {
+        const r = await api.importarBackup(datos);
+        setBkMsg({ tipo: "ok", texto: r.mensaje });
+      } catch (err) {
+        setBkMsg({ tipo: "error", texto: err.message || "No se pudo restaurar." });
+      } finally {
+        setImportando(false);
+      }
+    };
+    lector.readAsText(archivo);
+  }
 
   async function cambiarClave() {
     setPwdMsg(null);
@@ -222,6 +297,56 @@ export default function Configuracion() {
                 Actualizar contraseña
               </button>
             </div>
+          </div>
+
+          {/* Respaldo / copia de seguridad */}
+          <div className="card p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <DatabaseBackup size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Copia de seguridad</h2>
+            </div>
+            <p className="mb-3 text-xs text-muted">
+              Descarga un respaldo completo de tus datos (estaciones, playlists, programación,
+              biblioteca, mensajes y ajustes) o restaura desde un archivo.
+            </p>
+            <input
+              ref={inputBackup}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={onArchivoBackup}
+            />
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={exportarBackup}
+                className="btn-primary w-full"
+                disabled={exportando}
+              >
+                {exportando ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Exportar copia
+              </button>
+              <button
+                type="button"
+                onClick={() => inputBackup.current?.click()}
+                className="btn-ghost w-full"
+                disabled={importando}
+              >
+                {importando ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                Importar / restaurar
+              </button>
+            </div>
+            {bkMsg && (
+              <p
+                className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                  bkMsg.tipo === "ok"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-red-500/10 text-red-500"
+                }`}
+              >
+                {bkMsg.texto}
+              </p>
+            )}
           </div>
 
           <button type="submit" className="btn-primary w-full py-2.5">

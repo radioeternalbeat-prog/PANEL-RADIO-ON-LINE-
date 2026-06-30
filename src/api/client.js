@@ -120,6 +120,10 @@ export const api = {
   samples: () => request("/samples"),
   eliminarSample: (id) => request(`/samples/${id}`, { metodo: "DELETE" }),
   // La subida usa multipart, se hace con un helper aparte.
+
+  // Respaldo (copia de seguridad de toda la base de datos)
+  exportarBackup: () => request("/backup/exportar"),
+  importarBackup: (datos) => request("/backup/importar", { metodo: "POST", cuerpo: datos }),
 };
 
 // Sube un sample (audio) vía multipart/form-data.
