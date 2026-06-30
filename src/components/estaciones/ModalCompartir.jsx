@@ -81,7 +81,7 @@ export default function ModalCompartir({ estacion, onCerrar }) {
                   publicToken={estacion.embedToken}
                   channelId={estacion.embedCanal}
                   theme={temaWidget}
-                  height={240}
+                  minHeight={120}
                 />
                 <p className="mt-2 text-[11px] text-muted">
                   Pulsa play para escuchar lo que estás transmitiendo ahora mismo.
