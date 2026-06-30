@@ -41,7 +41,7 @@ export default function ModalCompartir({ estacion, onCerrar }) {
     estacion.streamUrl || `http://${estacion.host}:${estacion.puerto}${estacion.montaje}`;
 
   // Código embed oficial de Caster.fm (reproductor para oyentes).
-  const embedCaster = `<div data-type="newStreamPlayer" data-publicToken="${estacion.embedToken}" data-theme="light" data-color="FF8000" data-channelId="${estacion.embedCanal}" data-rendered="false" class="cstrEmbed"></div>
+  const embedCaster = `<div data-type="newStreamPlayer" data-publicToken="${estacion.embedToken}" data-theme="light" data-color="FF8000" data-channelId="${estacion.embedCanal}" data-rendered="false" class="cstrEmbed"><a href="https://www.caster.fm">Shoutcast Hosting</a> <a href="https://www.caster.fm">Stream Hosting</a> <a href="https://www.caster.fm">Radio Server Hosting</a></div>
 <script src="https://cdn.cloud.caster.fm/widgets/embed.js"></script>`;
 
   // Embed alternativo (audio HTML simple) cuando no hay widget.
@@ -81,7 +81,7 @@ export default function ModalCompartir({ estacion, onCerrar }) {
                   publicToken={estacion.embedToken}
                   channelId={estacion.embedCanal}
                   theme={temaWidget}
-                  height={200}
+                  height={240}
                 />
                 <p className="mt-2 text-[11px] text-muted">
                   Pulsa play para escuchar lo que estás transmitiendo ahora mismo.

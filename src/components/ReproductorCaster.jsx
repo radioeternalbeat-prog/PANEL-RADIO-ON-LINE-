@@ -10,7 +10,7 @@ export default function ReproductorCaster({
   channelId,
   theme = "light",
   color = "FF8000",
-  height = 200,
+  height = 240,
 }) {
   const srcDoc = useMemo(() => {
     const colorLimpio = String(color).replace("#", "");
@@ -29,7 +29,7 @@ export default function ReproductorCaster({
   data-color="${colorLimpio}"
   data-channelId="${channelId}"
   data-rendered="false"
-  class="cstrEmbed"></div>
+  class="cstrEmbed"><a href="https://www.caster.fm">Shoutcast Hosting</a> <a href="https://www.caster.fm">Stream Hosting</a> <a href="https://www.caster.fm">Radio Server Hosting</a></div>
 <script src="https://cdn.cloud.caster.fm/widgets/embed.js"></script>
 </body>
 </html>`;
