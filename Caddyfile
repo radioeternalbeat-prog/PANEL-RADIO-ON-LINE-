@@ -1,0 +1,23 @@
+# Proxy inverso con HTTPS automático (Let's Encrypt) para el panel Eternal Beat.
+# Caddy obtiene y renueva el certificado SSL solo. El dominio y el correo
+# se leen de las variables de entorno DOMINIO y EMAIL_SSL (archivo .env).
+
+{
+	email {$EMAIL_SSL}
+}
+
+{$DOMINIO} {
+	encode gzip zstd
+	# Reenvía todo (API, frontend y WebSocket /ws) al panel.
+	# Caddy gestiona automáticamente el "upgrade" de WebSocket.
+	reverse_proxy panel:4000
+}
+
+# --- OPCIONAL: stream con HTTPS bajo un subdominio propio ---
+# Si usas el Icecast del VPS (perfil "radio") y quieres servir el audio por
+# HTTPS en, por ejemplo, https://stream.tudominio.com/stream, define la
+# variable DOMINIO_STREAM en .env y descomenta este bloque:
+#
+# {$DOMINIO_STREAM} {
+# 	reverse_proxy icecast:8000
+# }

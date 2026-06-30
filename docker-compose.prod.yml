@@ -1,0 +1,73 @@
+# ============================================================
+#  Despliegue de PRODUCCIÓN para VPS (Hostinger u otro) con Docker.
+#
+#  Núcleo (siempre):
+#    panel  -> API + WebSocket + frontend (datos persistentes en ./data)
+#    caddy  -> proxy inverso con HTTPS automático para tu dominio
+#
+#  Streaming propio (opcional, perfil "radio"):
+#    icecast    -> servidor de audio para los oyentes
+#    liquidsoap -> AutoDJ 24/7 que reproduce la música subida al panel
+#
+#  Uso:
+#    cp .env.example .env   &&  nano .env        # configura tus valores
+#    docker compose -f docker-compose.prod.yml up -d --build           # panel + HTTPS
+#    docker compose -f docker-compose.prod.yml --profile radio up -d --build   # + radio propia
+# ============================================================
+services:
+  panel:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=4000
+      - DB_PATH=/data/panel.db
+      - UPLOADS_DIR=/data/uploads
+    volumes:
+      # Carpeta del VPS que conserva la base de datos y los audios subidos.
+      # Aquí vive TODO de forma permanente (no se borra en redeploys).
+      - ./data:/data
+    expose:
+      - "4000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - panel
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # ----- Streaming propio (opcional) -----
+  # NOTA: antes de usar este perfil en producción cambia las contraseñas
+  # "hackme" en streaming/icecast/icecast.xml y streaming/liquidsoap/radio.liq.
+  icecast:
+    build: ./streaming/icecast
+    profiles: ["radio"]
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  liquidsoap:
+    image: savonet/liquidsoap:v2.2.5
+    profiles: ["radio"]
+    depends_on:
+      - icecast
+    restart: unless-stopped
+    volumes:
+      - ./streaming/liquidsoap/radio.liq:/radio.liq:ro
+      # La música subida desde el panel alimenta el AutoDJ automáticamente.
+      - ./data/uploads:/media:ro
+    command: ["liquidsoap", "/radio.liq"]
+    ports:
+      - "8005:8005" # harbor para DJ en vivo
+
+volumes:
+  caddy_data:
+  caddy_config:
