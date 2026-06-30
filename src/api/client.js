@@ -124,6 +124,9 @@ export const api = {
   // Respaldo (copia de seguridad de toda la base de datos)
   exportarBackup: () => request("/backup/exportar"),
   importarBackup: (datos) => request("/backup/importar", { metodo: "POST", cuerpo: datos }),
+
+  // Página pública de radio (sin autenticación)
+  radioPublica: () => request("/publico/radio", { auth: false }),
 };
 
 // Sube un sample (audio) vía multipart/form-data.

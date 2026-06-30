@@ -15,6 +15,7 @@ import itunesRoutes from "./routes/itunes.routes.js";
 import samplesRoutes, { UPLOADS_DIR } from "./routes/samples.routes.js";
 import mensajesRoutes from "./routes/mensajes.routes.js";
 import backupRoutes from "./routes/backup.routes.js";
+import publicoRoutes from "./routes/publico.routes.js";
 import { mensajesRepo } from "./db/repos.js";
 import { iniciarWebSocket } from "./realtime.js";
 
@@ -69,6 +70,9 @@ app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
 app.use("/api/autodj", requiereAuth, autodjRoutes);
 app.use("/api/itunes", requiereAuth, itunesRoutes);
 app.use("/api/samples", requiereAuth, samplesRoutes);
+// Rutas públicas (sin autenticación): página de radio para oyentes.
+app.use("/api/publico", publicoRoutes);
+
 app.use("/api/mensajes", requiereAuth, mensajesRoutes);
 app.use("/api/backup", requiereAuth, backupRoutes);
 

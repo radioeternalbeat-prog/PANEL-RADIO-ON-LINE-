@@ -95,6 +95,10 @@ export default function ModalCompartir({ estacion, onCerrar }) {
               </div>
               <Copiable etiqueta="Pega este código en tu web (reproductor Caster.fm)" valor={embedCaster} multilinea />
 
+              <a href="/radio" target="_blank" rel="noreferrer" className="btn-ghost w-full justify-center">
+                <ExternalLink size={16} /> Abrir página pública de la radio
+              </a>
+
               <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">
                 En el plan gratuito de Caster.fm, los oyentes escuchan por este reproductor (no por una URL
                 directa). La URL con puerto es la de la <span className="font-semibold text-fg">fuente</span> y pide
