@@ -269,7 +269,13 @@ export default function Dashboard() {
                   </button>
                 )}
                 <button
-                  onClick={() => (esActual ? alternar() : reproducir(e))}
+                  onClick={() => {
+                    if (e.embedToken && e.embedCanal) {
+                      setCompartir(e);
+                      return;
+                    }
+                    esActual ? alternar() : reproducir(e);
+                  }}
                   disabled={!online}
                   className="btn-ghost px-2.5"
                   title="Escuchar"

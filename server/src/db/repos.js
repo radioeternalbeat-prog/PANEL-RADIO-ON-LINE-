@@ -17,6 +17,8 @@ function mapEstacion(r) {
     bitrate: r.bitrate,
     formato: r.formato,
     streamUrl: r.stream_url || null,
+    embedToken: r.embed_token || null,
+    embedCanal: r.embed_canal || null,
     oyentesActuales: r.oyentes_actuales,
     oyentesMaximos: r.oyentes_maximos,
     picoOyentes: r.pico_oyentes,
@@ -86,9 +88,9 @@ export const estacionesRepo = {
     const id = `estacion-${Date.now()}`;
     db.prepare(`
       INSERT INTO estaciones
-        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url,
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url, embed_token, embed_canal,
          oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       id,
       d.nombre,
@@ -100,6 +102,8 @@ export const estacionesRepo = {
       Number(d.bitrate) || 128,
       d.formato || "MP3",
       d.streamUrl || null,
+      d.embedToken || null,
+      d.embedCanal || null,
       0,
       Number(d.oyentesMaximos) || 100,
       0,
@@ -120,6 +124,8 @@ export const estacionesRepo = {
       bitrate: "bitrate",
       formato: "formato",
       streamUrl: "stream_url",
+      embedToken: "embed_token",
+      embedCanal: "embed_canal",
       oyentesMaximos: "oyentes_maximos",
     };
     const sets = [];

@@ -20,6 +20,8 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
     puerto: estacion?.puerto || 8000,
     montaje: estacion?.montaje || "/stream",
     streamUrl: estacion?.streamUrl || "",
+    embedToken: estacion?.embedToken || "",
+    embedCanal: estacion?.embedCanal || "",
     formato: estacion?.formato || "MP3",
     bitrate: estacion?.bitrate || 128,
     oyentesMaximos: estacion?.oyentesMaximos || 250,
@@ -47,6 +49,8 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
         puerto: Number(f.puerto) || 8000,
         montaje: f.montaje.startsWith("/") ? f.montaje : `/${f.montaje}`,
         streamUrl: f.streamUrl.trim(),
+        embedToken: f.embedToken.trim(),
+        embedCanal: f.embedCanal.trim(),
         formato: f.formato,
         bitrate: Number(f.bitrate),
         oyentesMaximos: Number(f.oyentesMaximos) || 100,
@@ -128,6 +132,26 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
               Usa HTTPS para que suene dentro del panel. Si la dejas vacía, se arma con host:puerto/montaje.
             </p>
           </Campo>
+          <Campo label="Reproductor Caster.fm — Public Token" >
+            <input
+              className="input"
+              value={f.embedToken}
+              onChange={(e) => set("embedToken")(e.target.value)}
+              placeholder="54a0c09f-..."
+            />
+          </Campo>
+          <Campo label="Reproductor Caster.fm — Channel ID">
+            <input
+              className="input"
+              value={f.embedCanal}
+              onChange={(e) => set("embedCanal")(e.target.value)}
+              placeholder="a224c145-..."
+            />
+          </Campo>
+          <p className="-mt-1 text-[11px] text-muted sm:col-span-2">
+            Opcional: si pones el token y canal del widget de Caster.fm, el botón "Escuchar" usará su
+            reproductor oficial (necesario en el plan gratuito).
+          </p>
           <label className="flex items-center justify-between rounded-lg bg-surface2 px-4 py-3 sm:col-span-2">
             <span className="text-sm font-medium text-fg">Activar AutoDJ en esta estación</span>
             <input type="checkbox" className="h-5 w-9 cursor-pointer accent-brand-500" checked={f.autodj} onChange={(e) => set("autodj")(e.target.checked)} />
