@@ -137,6 +137,8 @@ export default function Dashboard() {
   const totalOyentes = estacionesVivo.reduce((a, e) => a + e.oyentesActuales, 0);
   const enLinea = estacionesVivo.filter((e) => e.estado === "online").length;
   const picoTotal = estacionesVivo.reduce((a, e) => a + e.picoOyentes, 0);
+  const hayReal = estacionesVivo.some((e) => e.real);
+  const realEnVivo = estacionesVivo.some((e) => e.real && e.estado === "online");
 
   if (cargando) {
     return (
@@ -177,7 +179,13 @@ export default function Dashboard() {
         <KpiCard icon={Radio} etiqueta="Estaciones activas" valor={`${enLinea}/${estacionesVivo.length}`} detalle="En transmisión" color="bg-brand-500/15 text-brand-500" />
         <KpiCard icon={Headphones} etiqueta="Oyentes ahora" valor={totalOyentes} detalle="En todas las estaciones" color="bg-emerald-500/15 text-emerald-500" />
         <KpiCard icon={TrendingUp} etiqueta="Pico de oyentes" valor={picoTotal} detalle="Máximo histórico" color="bg-amber-500/15 text-amber-500" />
-        <KpiCard icon={Signal} etiqueta="Estado del servidor" valor="Operativo" detalle="Icecast 2.4.4" color="bg-accent-500/15 text-accent-500" />
+        <KpiCard
+          icon={Signal}
+          etiqueta="Estado del servidor"
+          valor={realEnVivo ? "En vivo" : hayReal ? "Fuera del aire" : "Operativo"}
+          detalle={hayReal ? "Caster.fm · datos reales" : "Icecast 2.4.4"}
+          color="bg-accent-500/15 text-accent-500"
+        />
       </div>
 
       {/* Tarjetas de estación */}
@@ -214,6 +222,16 @@ export default function Dashboard() {
                 </div>
                 <Estado estado={e.estado} />
               </div>
+
+              {/* Indicador de datos reales del servidor */}
+              {e.real && (
+                <div className="relative mx-4 -mt-1 mb-1 flex items-center gap-1.5 text-[11px] font-semibold">
+                  <Wifi size={12} className={e.estado === "online" ? "text-emerald-500" : "text-muted"} />
+                  <span className={e.estado === "online" ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}>
+                    {e.estado === "online" ? "Datos reales en vivo" : "Servidor real · sin emisión"}
+                  </span>
+                </div>
+              )}
 
               {/* Ahora suena */}
               <div className="mx-4 flex items-center gap-2 rounded-xl bg-surface2 px-3 py-2">

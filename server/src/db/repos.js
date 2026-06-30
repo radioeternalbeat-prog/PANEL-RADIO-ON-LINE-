@@ -174,6 +174,12 @@ export const estacionesRepo = {
       "UPDATE estaciones SET oyentes_actuales=?, pico_oyentes=?, cancion_actual=? WHERE id=?"
     ).run(oyentesActuales, picoOyentes, cancionActual, id);
   },
+  // Aplica estadísticas REALES leídas del servidor Icecast (incluye estado y uptime).
+  aplicarStatsReales(id, { estado, oyentesActuales, picoOyentes, cancionActual, uptime }) {
+    db.prepare(
+      "UPDATE estaciones SET estado=?, oyentes_actuales=?, pico_oyentes=?, cancion_actual=?, uptime=? WHERE id=?"
+    ).run(estado, oyentesActuales, picoOyentes, cancionActual, uptime, id);
+  },
 };
 
 // ---------- Pistas (biblioteca) ----------
