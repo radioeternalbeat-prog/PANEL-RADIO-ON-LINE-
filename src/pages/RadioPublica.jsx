@@ -1,7 +1,79 @@
 import { useEffect, useState } from "react";
-import { Check, Headphones, Loader2, Music2, Radio, Share2 } from "lucide-react";
+import {
+  Check,
+  Clock,
+  Headphones,
+  History,
+  Loader2,
+  MessageCircle,
+  Music2,
+  Radio,
+  Send,
+  Share2,
+} from "lucide-react";
 import { api } from "../api/client";
 import ReproductorCaster from "../components/ReproductorCaster";
+import { bloqueAlAire, etiquetaDias } from "../utils/programacion";
+
+// Formulario para que los oyentes pidan canciones o saluden (llega al panel).
+function PeticionForm() {
+  const [nombre, setNombre] = useState("");
+  const [texto, setTexto] = useState("");
+  const [estado, setEstado] = useState("idle"); // idle | enviando | ok | error
+  const [msg, setMsg] = useState("");
+
+  async function enviar(e) {
+    e.preventDefault();
+    if (!texto.trim()) return;
+    setEstado("enviando");
+    setMsg("");
+    try {
+      await api.crearPeticion({ nombre, texto });
+      setEstado("ok");
+      setTexto("");
+      setNombre("");
+      setMsg("¡Gracias! Tu mensaje llegó a la cabina.");
+    } catch (err) {
+      setEstado("error");
+      setMsg(err.message || "No se pudo enviar.");
+    }
+  }
+
+  return (
+    <form onSubmit={enviar} className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/70">
+        <MessageCircle size={15} className="text-brand-500" /> Pide tu canción o saluda
+      </h2>
+      <input
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        placeholder="Tu nombre (opcional)"
+        maxLength={60}
+        className="mb-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-brand-500"
+      />
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Tu mensaje o petición..."
+        rows={2}
+        maxLength={500}
+        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-brand-500"
+      />
+      <button
+        disabled={estado === "enviando" || !texto.trim()}
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-grad px-4 py-2 text-sm font-bold text-white transition disabled:opacity-50"
+      >
+        {estado === "enviando" ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+        Enviar a la cabina
+      </button>
+      {msg && (
+        <p className={`mt-2 text-center text-xs ${estado === "ok" ? "text-emerald-400" : "text-red-400"}`}>
+          {msg}
+        </p>
+      )}
+    </form>
+  );
+}
 
 // Página PÚBLICA de radio para los oyentes (no requiere iniciar sesión).
 // Muestra marca, reproductor en vivo, estado "al aire", "ahora suena" y oyentes.
@@ -160,6 +232,77 @@ export default function RadioPublica() {
                 <p className="mt-1 text-[10px] text-white/50">{copiado ? "¡Copiado!" : "Compartir"}</p>
               </button>
             </div>
+
+            {/* Peticiones / saludos de oyentes */}
+            <PeticionForm />
+
+            {/* Reproducido recientemente */}
+            {datos.historial?.length > 0 && (
+              <div className="mt-6">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/70">
+                  <History size={15} className="text-brand-500" /> Reproducido recientemente
+                </h2>
+                <ul className="space-y-1.5">
+                  {datos.historial.map((h) => (
+                    <li
+                      key={h.id}
+                      className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/10">
+                        {h.artwork ? (
+                          <img src={h.artwork} alt="" className="h-8 w-8 object-cover" />
+                        ) : (
+                          <Music2 size={14} className="text-white/50" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">{h.titulo}</p>
+                        {h.artista && <p className="truncate text-xs text-white/40">{h.artista}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Programación */}
+            {datos.programacion?.length > 0 && (
+              <div className="mt-6">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/70">
+                  <Clock size={15} className="text-brand-500" /> Programación
+                </h2>
+                <ul className="space-y-1.5">
+                  {datos.programacion.map((p) => {
+                    const alAire = bloqueAlAire(p);
+                    return (
+                      <li
+                        key={p.id}
+                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
+                          alAire ? "border-brand-500/50 bg-brand-500/10" : "border-white/5 bg-white/5"
+                        }`}
+                      >
+                        <span className="font-display text-xs font-bold tabular-nums text-brand-400">
+                          {p.inicio}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-2 truncate text-sm">
+                            {p.nombre}
+                            {alAire && (
+                              <span className="rounded bg-brand-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                                Al aire
+                              </span>
+                            )}
+                          </p>
+                          <p className="truncate text-xs text-white/40">
+                            {p.playlist || "—"} · {etiquetaDias(p.dias)}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 

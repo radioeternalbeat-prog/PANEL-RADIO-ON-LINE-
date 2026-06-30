@@ -128,6 +128,15 @@ function crearEsquema() {
       cada_min INTEGER DEFAULT 30,
       activa INTEGER DEFAULT 1
     );
+
+    CREATE TABLE IF NOT EXISTS historial (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      estacion_id TEXT,
+      titulo TEXT,
+      artista TEXT,
+      artwork TEXT,
+      creado INTEGER
+    );
   `);
 }
 

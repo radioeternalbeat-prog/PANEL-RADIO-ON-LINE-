@@ -20,7 +20,8 @@ const LS_KEY = "piloto_auto";
 // Todo con opción de control manual desde la UI.
 export function AutomatizacionProvider({ children }) {
   const { autenticado } = useAuth();
-  const { reproducirLista, reproducirPista, insertarSiguiente, cola, indiceCola } = usePlayer();
+  const { reproducirLista, reproducirPista, insertarSiguiente, cola, indiceCola, medioActual } =
+    usePlayer();
 
   const [auto, setAuto] = useState(() => localStorage.getItem(LS_KEY) === "1");
   const [inserciones, setInserciones] = useState([]);
@@ -58,6 +59,18 @@ export function AutomatizacionProvider({ children }) {
   useEffect(() => {
     recargar();
   }, [autenticado]);
+
+  // Reporta al backend la canción que está sonando (para "ahora suena" real
+  // en el dashboard y la página pública). Solo si hay sesión y es una pista.
+  useEffect(() => {
+    if (!autenticado) return;
+    const m = medioActual;
+    if (m?.tipo === "pista" && m.titulo) {
+      api
+        .reportarAhoraSuena({ titulo: m.titulo, artista: m.subtitulo, artwork: m.artwork })
+        .catch(() => {});
+    }
+  }, [autenticado, medioActual?.tipo, medioActual?.id, medioActual?.titulo]);
 
   // Pistas reproducibles de una playlist (con caché de 60 s).
   async function pistasReproducibles(playlistId) {

@@ -16,6 +16,7 @@ import samplesRoutes, { UPLOADS_DIR } from "./routes/samples.routes.js";
 import mensajesRoutes from "./routes/mensajes.routes.js";
 import backupRoutes from "./routes/backup.routes.js";
 import publicoRoutes from "./routes/publico.routes.js";
+import ahoraRoutes from "./routes/ahora.routes.js";
 import { mensajesRepo } from "./db/repos.js";
 import { iniciarWebSocket } from "./realtime.js";
 
@@ -24,7 +25,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Marcador de versión para verificar qué build está desplegado.
-const VERSION = "1.6.0-respaldo-backup-2026-06";
+const VERSION = "1.8.0-ahorasuena-historial-peticiones-2026-06";
 
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
 const origenesPermitidos = process.env.CORS_ORIGIN
@@ -75,6 +76,7 @@ app.use("/api/publico", publicoRoutes);
 
 app.use("/api/mensajes", requiereAuth, mensajesRoutes);
 app.use("/api/backup", requiereAuth, backupRoutes);
+app.use("/api/ahora-suena", requiereAuth, ahoraRoutes);
 
 // 404 para rutas de API no encontradas
 app.use("/api", (req, res) => {

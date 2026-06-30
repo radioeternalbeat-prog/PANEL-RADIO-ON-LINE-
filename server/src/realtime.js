@@ -1,6 +1,6 @@
 import { WebSocketServer } from "ws";
 import { verificarToken } from "./auth.js";
-import { estacionesRepo } from "./db/repos.js";
+import { estacionesRepo, historialRepo } from "./db/repos.js";
 import { rotacionCanciones, registrarTotalOyentes } from "./live.js";
 import { leerEstadoIcecast, esEstacionReal } from "./services/icecast.js";
 
@@ -46,11 +46,22 @@ async function actualizarStatsReales() {
     reales.map(async (est) => {
       const r = await leerEstadoIcecast(est);
       if (r.alAire) {
+        // "Ahora suena": prioriza los metadatos del servidor; si vienen vacíos,
+        // usa lo último reportado por el panel (si es reciente) o un texto genérico.
+        let cancion = r.titulo;
+        if (!cancion) {
+          const ult = historialRepo.ultimo(est.id);
+          if (ult && Date.now() - ult.creado < 10 * 60 * 1000) {
+            cancion = ult.artista ? `${ult.artista} — ${ult.titulo}` : ult.titulo;
+          } else {
+            cancion = "Transmisión en vivo";
+          }
+        }
         estacionesRepo.aplicarStatsReales(est.id, {
           estado: "online",
           oyentesActuales: r.oyentes,
           picoOyentes: Math.max(est.picoOyentes, r.pico, r.oyentes),
-          cancionActual: r.titulo || "Transmisión en vivo",
+          cancionActual: cancion,
           uptime: r.uptime || est.uptime,
         });
       } else if (r.ok) {

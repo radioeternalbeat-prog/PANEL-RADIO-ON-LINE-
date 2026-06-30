@@ -127,6 +127,12 @@ export const api = {
 
   // Página pública de radio (sin autenticación)
   radioPublica: () => request("/publico/radio", { auth: false }),
+  historialPublico: () => request("/publico/historial", { auth: false }),
+  crearPeticion: (datos) =>
+    request("/publico/peticion", { metodo: "POST", cuerpo: datos, auth: false }),
+
+  // Reporte de "ahora suena" desde el panel (requiere sesión)
+  reportarAhoraSuena: (datos) => request("/ahora-suena", { metodo: "POST", cuerpo: datos }),
 };
 
 // Sube un sample (audio) vía multipart/form-data.

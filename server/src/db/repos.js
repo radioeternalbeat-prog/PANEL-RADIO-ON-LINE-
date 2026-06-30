@@ -180,6 +180,57 @@ export const estacionesRepo = {
       "UPDATE estaciones SET estado=?, oyentes_actuales=?, pico_oyentes=?, cancion_actual=?, uptime=? WHERE id=?"
     ).run(estado, oyentesActuales, picoOyentes, cancionActual, uptime, id);
   },
+  // Fija el texto de "ahora suena" (reportado por el panel).
+  fijarCancion(id, texto) {
+    db.prepare("UPDATE estaciones SET cancion_actual=? WHERE id=?").run(texto, id);
+  },
+};
+
+// ---------- Historial de reproducción ----------
+function mapHistorial(r) {
+  return {
+    id: r.id,
+    estacionId: r.estacion_id,
+    titulo: r.titulo,
+    artista: r.artista,
+    artwork: r.artwork,
+    creado: r.creado,
+  };
+}
+
+export const historialRepo = {
+  // Agrega una canción al historial (evita duplicados consecutivos).
+  agregar({ estacionId, titulo, artista, artwork }) {
+    const ultimo = db
+      .prepare("SELECT titulo, artista FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 1")
+      .get(estacionId);
+    if (ultimo && ultimo.titulo === titulo && (ultimo.artista || "") === (artista || "")) {
+      return null; // misma canción que la anterior, no duplicar
+    }
+    const info = db
+      .prepare(
+        "INSERT INTO historial (estacion_id, titulo, artista, artwork, creado) VALUES (?,?,?,?,?)"
+      )
+      .run(estacionId, titulo, artista || null, artwork || null, Date.now());
+    // Poda: conserva las últimas 100 entradas por estación.
+    db.prepare(
+      `DELETE FROM historial WHERE estacion_id=? AND id NOT IN
+        (SELECT id FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 100)`
+    ).run(estacionId, estacionId);
+    return mapHistorial(db.prepare("SELECT * FROM historial WHERE id=?").get(info.lastInsertRowid));
+  },
+  ultimo(estacionId) {
+    const r = db
+      .prepare("SELECT * FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 1")
+      .get(estacionId);
+    return r ? mapHistorial(r) : null;
+  },
+  listar(estacionId, limite = 10) {
+    return db
+      .prepare("SELECT * FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT ?")
+      .all(estacionId, limite)
+      .map(mapHistorial);
+  },
 };
 
 // ---------- Pistas (biblioteca) ----------
