@@ -569,7 +569,7 @@ function Deck({
       </div>
 
       {/* BPM + tap + sync */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg bg-surface px-2 py-1">
           <input type="number" min="40" max="250" value={estado.bpm}
             onChange={(e) => set("bpm")(Number(e.target.value) || 0)}
@@ -609,7 +609,7 @@ function Deck({
       </div>
 
       {/* Loops por beats */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <Repeat size={14} className="text-muted" />
         {[1, 2, 4].map((b) => (
           <button key={b} onClick={() => onLoop(id, b)}

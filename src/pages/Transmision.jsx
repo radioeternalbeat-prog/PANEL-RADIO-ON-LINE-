@@ -29,7 +29,7 @@ export default function Transmision() {
         <PanelMezclador />
 
         {/* Fila 1: (Micrófonos + Audífonos) · Cola · (Reproductor + Hora/Clima + Mensajes) */}
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
           {/* Izquierda */}
           <div className="flex flex-col gap-5">
             <PanelMicrofonos />
