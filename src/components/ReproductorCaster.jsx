@@ -43,13 +43,16 @@ export default function ReproductorCaster({
     );
   }
 
+  // Nota: el widget de Caster.fm no reproduce dentro de un iframe en modo
+  // "sandbox" (bloquea el audio). Por eso usamos el iframe sin sandbox y con
+  // permisos de autoplay/media. El contenido proviene del CDN oficial de Caster.
   return (
     <iframe
       title="Reproductor en vivo"
       srcDoc={srcDoc}
       className="w-full rounded-xl border border-line bg-surface"
       style={{ height }}
-      sandbox="allow-scripts allow-same-origin allow-popups"
+      allow="autoplay; encrypted-media; fullscreen; clipboard-write"
     />
   );
 }
