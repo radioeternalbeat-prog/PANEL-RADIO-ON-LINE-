@@ -16,6 +16,7 @@ function mapEstacion(r) {
     puerto: r.puerto,
     bitrate: r.bitrate,
     formato: r.formato,
+    streamUrl: r.stream_url || null,
     oyentesActuales: r.oyentes_actuales,
     oyentesMaximos: r.oyentes_maximos,
     picoOyentes: r.pico_oyentes,
@@ -85,9 +86,9 @@ export const estacionesRepo = {
     const id = `estacion-${Date.now()}`;
     db.prepare(`
       INSERT INTO estaciones
-        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato,
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url,
          oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       id,
       d.nombre,
@@ -98,6 +99,7 @@ export const estacionesRepo = {
       Number(d.puerto) || 8000,
       Number(d.bitrate) || 128,
       d.formato || "MP3",
+      d.streamUrl || null,
       0,
       Number(d.oyentesMaximos) || 100,
       0,
@@ -117,6 +119,7 @@ export const estacionesRepo = {
       puerto: "puerto",
       bitrate: "bitrate",
       formato: "formato",
+      streamUrl: "stream_url",
       oyentesMaximos: "oyentes_maximos",
     };
     const sets = [];

@@ -22,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Marcador de versión para verificar qué build está desplegado.
-const VERSION = "1.2.0-automatizacion-cuñas-2026-06";
+const VERSION = "1.3.0-caster-stream-real-2026-06";
 
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
 const origenesPermitidos = process.env.CORS_ORIGIN

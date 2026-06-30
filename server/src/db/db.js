@@ -38,6 +38,7 @@ function crearEsquema() {
       puerto INTEGER,
       bitrate INTEGER,
       formato TEXT,
+      stream_url TEXT,
       oyentes_actuales INTEGER DEFAULT 0,
       oyentes_maximos INTEGER DEFAULT 100,
       pico_oyentes INTEGER DEFAULT 0,
@@ -146,14 +147,15 @@ function sembrar() {
   if (vacia("estaciones")) {
     const ins = db.prepare(`
       INSERT INTO estaciones
-        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato,
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url,
          oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `);
     const filas = [
-      ["rock-fm", "Rock FM Online", "online", "Icecast 2.4.4", "/rockfm", "stream.panelradio.online", 8000, 128, "MP3", 142, 250, 198, "Queen - Bohemian Rhapsody", 1, "5d 12h 34m"],
-      ["latino-mix", "Latino Mix", "online", "Icecast 2.4.4", "/latinomix", "stream.panelradio.online", 8010, 192, "AAC", 87, 150, 121, "Bad Bunny - Tití Me Preguntó", 1, "2d 03h 11m"],
-      ["jazz-lounge", "Jazz Lounge", "offline", "Icecast 2.4.4", "/jazz", "stream.panelradio.online", 8020, 128, "MP3", 0, 100, 64, "—", 0, "—"],
+      ["eternal-beat", "Eternal Beat", "online", "Caster.fm (Icecast 2.5)", "/D6md9", "sapircast.caster.fm", 13721, 96, "MP3", "https://sapircast.caster.fm:13721/D6md9", 0, 400, 0, "—", 1, "0d 0h 1m"],
+      ["rock-fm", "Rock FM Online", "online", "Icecast 2.4.4", "/rockfm", "stream.panelradio.online", 8000, 128, "MP3", null, 142, 250, 198, "Queen - Bohemian Rhapsody", 1, "5d 12h 34m"],
+      ["latino-mix", "Latino Mix", "online", "Icecast 2.4.4", "/latinomix", "stream.panelradio.online", 8010, 192, "AAC", null, 87, 150, 121, "Bad Bunny - Tití Me Preguntó", 1, "2d 03h 11m"],
+      ["jazz-lounge", "Jazz Lounge", "offline", "Icecast 2.4.4", "/jazz", "stream.panelradio.online", 8020, 128, "MP3", null, 0, 100, 64, "—", 0, "—"],
     ];
     for (const f of filas) ins.run(...f);
   }
@@ -219,6 +221,12 @@ try {
 // Migración: vincula la programación a una playlist real (playlist_id).
 try {
   db.exec("ALTER TABLE programacion ADD COLUMN playlist_id INTEGER");
+} catch {
+  /* la columna ya existe */
+}
+// Migración: URL pública del stream por estación.
+try {
+  db.exec("ALTER TABLE estaciones ADD COLUMN stream_url TEXT");
 } catch {
   /* la columna ya existe */
 }

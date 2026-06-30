@@ -29,7 +29,9 @@ function Copiable({ etiqueta, valor, multilinea }) {
 }
 
 export default function ModalCompartir({ estacion, onCerrar }) {
-  const streamUrl = `http://${estacion.host}:${estacion.puerto}${estacion.montaje}`;
+  // Usa la URL real del stream si está configurada; si no, la construye.
+  const streamUrl =
+    estacion.streamUrl || `http://${estacion.host}:${estacion.puerto}${estacion.montaje}`;
   const embed = `<audio controls preload="none" style="width:100%">
   <source src="${streamUrl}" type="audio/mpeg" />
   Tu navegador no soporta audio en streaming.
@@ -72,8 +74,9 @@ export default function ModalCompartir({ estacion, onCerrar }) {
           <Copiable etiqueta="Pega este código en tu web" valor={embed} multilinea />
 
           <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">
-            La URL funcionará cuando la estación esté <span className="font-semibold text-fg">en línea</span> en tu
-            servidor de streaming (Icecast/SHOUTcast). En el plan local/demo es una dirección de ejemplo.
+            La URL suena cuando hay una <span className="font-semibold text-fg">fuente emitiendo</span> al
+            servidor (AutoDJ del proveedor, codificador como BUTT/Mixxx, o Liquidsoap). Si nada está al aire,
+            el reproductor mostrará "sin audio".
           </p>
         </div>
       </div>

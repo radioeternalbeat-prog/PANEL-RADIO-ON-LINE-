@@ -19,6 +19,7 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
     host: estacion?.host || "stream.eternalbeat.online",
     puerto: estacion?.puerto || 8000,
     montaje: estacion?.montaje || "/stream",
+    streamUrl: estacion?.streamUrl || "",
     formato: estacion?.formato || "MP3",
     bitrate: estacion?.bitrate || 128,
     oyentesMaximos: estacion?.oyentesMaximos || 250,
@@ -45,6 +46,7 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
         host: f.host.trim(),
         puerto: Number(f.puerto) || 8000,
         montaje: f.montaje.startsWith("/") ? f.montaje : `/${f.montaje}`,
+        streamUrl: f.streamUrl.trim(),
         formato: f.formato,
         bitrate: Number(f.bitrate),
         oyentesMaximos: Number(f.oyentesMaximos) || 100,
@@ -114,6 +116,17 @@ export default function ModalEstacion({ estacion, onCerrar, onGuardado, onElimin
             <select className="input" value={f.bitrate} onChange={(e) => set("bitrate")(Number(e.target.value))}>
               {bitratesSoportados.map((x) => <option key={x} value={x}>{x} kbps</option>)}
             </select>
+          </Campo>
+          <Campo label="URL pública del stream (para oyentes)" ancho="sm:col-span-2">
+            <input
+              className="input"
+              value={f.streamUrl}
+              onChange={(e) => set("streamUrl")(e.target.value)}
+              placeholder="https://sapircast.caster.fm:13721/D6md9"
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              Usa HTTPS para que suene dentro del panel. Si la dejas vacía, se arma con host:puerto/montaje.
+            </p>
           </Campo>
           <label className="flex items-center justify-between rounded-lg bg-surface2 px-4 py-3 sm:col-span-2">
             <span className="text-sm font-medium text-fg">Activar AutoDJ en esta estación</span>
