@@ -137,7 +137,7 @@ export default function RadioPublica() {
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="animate-spin text-brand-500" size={36} />
           </div>
-        ) : error ? (
+        ) : error && !datos ? (
           <div className="mt-20 rounded-2xl border border-white/10 bg-white/5 px-6 py-8 text-center">
             <Radio className="mx-auto mb-3 text-brand-500" size={32} />
             <p className="text-white/80">{error}</p>

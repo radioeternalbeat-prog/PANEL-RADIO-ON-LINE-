@@ -9,6 +9,7 @@ import {
 import { api } from "../api/client";
 import { useAuth } from "./AuthContext";
 import { usePlayer } from "./PlayerContext";
+import { useOnAir } from "./OnAirContext";
 import { bloqueActivo } from "../utils/programacion";
 
 const AutomatizacionContext = createContext(null);
@@ -22,6 +23,7 @@ export function AutomatizacionProvider({ children }) {
   const { autenticado } = useAuth();
   const { reproducirLista, reproducirPista, insertarSiguiente, cola, indiceCola, medioActual } =
     usePlayer();
+  const { enVivo } = useOnAir();
 
   const [auto, setAuto] = useState(() => localStorage.getItem(LS_KEY) === "1");
   const [inserciones, setInserciones] = useState([]);
@@ -61,16 +63,17 @@ export function AutomatizacionProvider({ children }) {
   }, [autenticado]);
 
   // Reporta al backend la canción que está sonando (para "ahora suena" real
-  // en el dashboard y la página pública). Solo si hay sesión y es una pista.
+  // en el dashboard y la página pública). Solo si hay sesión, estás AL AIRE
+  // y es una pista (evita que una preview de la biblioteca cambie el aire).
   useEffect(() => {
-    if (!autenticado) return;
+    if (!autenticado || !enVivo) return;
     const m = medioActual;
     if (m?.tipo === "pista" && m.titulo) {
       api
         .reportarAhoraSuena({ titulo: m.titulo, artista: m.subtitulo, artwork: m.artwork })
         .catch(() => {});
     }
-  }, [autenticado, medioActual?.tipo, medioActual?.id, medioActual?.titulo]);
+  }, [autenticado, enVivo, medioActual?.tipo, medioActual?.id, medioActual?.titulo]);
 
   // Pistas reproducibles de una playlist (con caché de 60 s).
   async function pistasReproducibles(playlistId) {
