@@ -3,6 +3,7 @@ import { verificarToken } from "./auth.js";
 import { estacionesRepo, historialRepo } from "./db/repos.js";
 import { rotacionCanciones, registrarTotalOyentes } from "./live.js";
 import { leerEstadoIcecast, esEstacionReal } from "./services/icecast.js";
+import { azuracastConfigurado, leerAzuraCast } from "./services/azuracast.js";
 
 // Para estaciones DEMO (sin servidor real) simula la evolución de oyentes y
 // la canción en reproducción. Las estaciones REALES se actualizan aparte
@@ -39,16 +40,29 @@ function actualizarMetricasSimuladas() {
   registrarTotalOyentes(total);
 }
 
-// Lee estadísticas REALES del servidor Icecast para cada estación real y las persiste.
+// Lee estadísticas REALES del servidor de streaming para cada estación real.
+// Prefiere la API de AzuraCast (si está configurada) por dar título/artista/
+// historial reales; si no, cae al estado JSON de Icecast (Caster.fm).
 async function actualizarStatsReales() {
   const reales = estacionesRepo.listar().filter(esEstacionReal);
+  const usarAzura = azuracastConfigurado();
+
   await Promise.all(
     reales.map(async (est) => {
-      const r = await leerEstadoIcecast(est);
+      const r = usarAzura ? await leerAzuraCast() : await leerEstadoIcecast(est);
+
       if (r.alAire) {
-        // "Ahora suena": prioriza los metadatos del servidor; si vienen vacíos,
-        // usa lo último reportado por el panel (si es reciente) o un texto genérico.
-        let cancion = r.titulo;
+        // Registra la canción real en el historial (dedupe interno).
+        if (r.titulo) {
+          historialRepo.agregar({
+            estacionId: est.id,
+            titulo: r.titulo,
+            artista: r.artista || null,
+            artwork: r.artwork || null,
+          });
+        }
+        // Texto de "ahora suena": del servidor, o lo último reportado por el panel.
+        let cancion = r.titulo ? (r.artista ? `${r.artista} — ${r.titulo}` : r.titulo) : null;
         if (!cancion) {
           const ult = historialRepo.ultimo(est.id);
           if (ult && Date.now() - ult.creado < 10 * 60 * 1000) {
@@ -59,8 +73,8 @@ async function actualizarStatsReales() {
         }
         estacionesRepo.aplicarStatsReales(est.id, {
           estado: "online",
-          oyentesActuales: r.oyentes,
-          picoOyentes: Math.max(est.picoOyentes, r.pico, r.oyentes),
+          oyentesActuales: r.oyentes || 0,
+          picoOyentes: Math.max(est.picoOyentes, r.pico || 0, r.oyentes || 0),
           cancionActual: cancion,
           uptime: r.uptime || est.uptime,
         });

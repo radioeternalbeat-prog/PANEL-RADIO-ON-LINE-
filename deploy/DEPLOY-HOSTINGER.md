@@ -122,9 +122,14 @@ Tienes dos caminos. Elige uno:
 ### Opción A — AzuraCast (recomendado, más completo)
 1. Instala **AzuraCast** (Hostinger tiene plantilla de 1 clic, o en su propio VPS).
 2. Crea tu estación y sube tu música a AzuraCast (AutoDJ 24/7).
-3. AzuraCast expone un Icecast con `status-json.xsl`, así que el panel ya puede
-   leer sus **estadísticas reales** (igual que con Caster.fm): en el panel, edita
-   la estación y pon en **URL del stream** la URL pública de AzuraCast.
+3. **Conecta el panel a AzuraCast** para datos 100% reales (ahora suena, oyentes,
+   historial) sin que el panel tenga que reportar nada: en `.env` define
+   ```
+   AZURACAST_BASE_URL=https://radio.tudominio.com
+   AZURACAST_STATION=el-shortcode-de-tu-estacion
+   ```
+   y reinicia el panel (`bash deploy/deploy.sh`). El panel detecta AzuraCast
+   automáticamente y toma de ahí las estadísticas.
 
 ### Opción B — Nuestro Icecast + Liquidsoap (todo en este VPS)
 1. **Cambia las contraseñas** `hackme` por unas propias en:
@@ -147,8 +152,8 @@ Tienes dos caminos. Elige uno:
 **Actualizar a la última versión del código:**
 ```bash
 cd /opt/eternal-beat
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
+bash deploy/deploy.sh          # atajo: git pull + rebuild + restart
+# (o, para incluir el streaming propio: bash deploy/deploy.sh radio)
 ```
 
 **Reiniciar / detener:**

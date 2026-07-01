@@ -25,7 +25,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Marcador de versión para verificar qué build está desplegado.
-const VERSION = "1.9.1-refinamientos-2026-06";
+const VERSION = "1.10.0-azuracast-ready-2026-06";
 
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
 const origenesPermitidos = process.env.CORS_ORIGIN
