@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Mic, Music3, Piano, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { api, subirSample, urlRecurso } from "../../api/client";
-import { useMidi, useMidiTarget, useMidiEtiqueta } from "../../context/MidiContext";
+import { useMidi, useMidiTarget, useMidiEtiqueta, useMidiFeedback } from "../../context/MidiContext";
 
 const PADS_MIDI = 9;
 
@@ -113,6 +113,11 @@ export default function PanelSoundboard() {
     // si subes/borras samples y las posiciones se recorren.
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useMidiEtiqueta(`soundboard.pad${i + 1}`, samples[i]?.nombre || null);
+    // Feedback de LED: si el usuario configuró una salida MIDI, el pad
+    // físico se enciende mientras el sample está sonando y se apaga al
+    // terminar — igual que en un controlador de pads dedicado.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useMidiFeedback(`soundboard.pad${i + 1}`, samples[i] && sonando === samples[i].id);
   }
   useMidiTarget("soundboard.detenerTodos", () => detenerTodos());
   // "Pánico" global también silencia el soundboard cuando este panel está montado.

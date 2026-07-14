@@ -5,6 +5,7 @@ import {
   Download,
   FlipHorizontal2,
   Gauge,
+  Lightbulb,
   Pencil,
   Piano,
   Plus,
@@ -202,6 +203,11 @@ export default function PanelMidiMapping() {
     iniciarAsistente,
     saltarAsistente,
     detenerAsistente,
+    salidas,
+    salidaFeedbackId,
+    elegirSalidaFeedback,
+    feedbackHabilitado,
+    alternarFeedbackHabilitado,
   } = useMidi();
 
   const [nombreNuevo, setNombreNuevo] = useState("");
@@ -383,6 +389,56 @@ export default function PanelMidiMapping() {
               </p>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Feedback de LEDs (MIDI Output): enciende el LED del pad/botón físico
+          mientras suena, por ejemplo, un sample del Soundboard. Es opcional
+          y solo funciona con controladores que tengan salida MIDI y LEDs
+          controlables (la mayoría de grids de pads DJ/producción). */}
+      <div className="mb-5 rounded-xl bg-surface2 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Lightbulb size={15} className={feedbackHabilitado ? "text-amber-500" : "text-muted"} />
+            <p className="text-sm font-medium text-fg">Feedback de LEDs en el controlador</p>
+          </div>
+          <button
+            onClick={alternarFeedbackHabilitado}
+            className={`relative h-6 w-11 rounded-full transition ${
+              feedbackHabilitado ? "bg-brand-600" : "bg-line"
+            }`}
+            title="Activar/desactivar el feedback de LEDs"
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                feedbackHabilitado ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="mt-1 text-[11px] text-muted">
+          Enciende el LED del pad/botón físico mientras algo está sonando (ej. un sample del
+          Soundboard) — útil para saber de un vistazo qué está activo sin mirar la pantalla.
+        </p>
+        {salidas.length === 0 ? (
+          <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
+            Tu controlador no reportó una salida MIDI (o no soporta LEDs controlables por
+            software). El resto del mapeo funciona igual sin esto.
+          </p>
+        ) : (
+          <select
+            value={salidaFeedbackId}
+            onChange={(e) => elegirSalidaFeedback(e.target.value)}
+            disabled={!feedbackHabilitado}
+            className="input mt-2 max-w-[260px] py-1.5 text-sm"
+          >
+            <option value="">Sin salida seleccionada</option>
+            {salidas.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 

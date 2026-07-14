@@ -133,6 +133,9 @@ export function MidiProvider({ children }) {
   const [accesoListo, setAccesoListo] = useState(false);
   const [errorAcceso, setErrorAcceso] = useState("");
   const [dispositivos, setDispositivos] = useState([]); // [{id, nombre, fabricante, estado}]
+  const [salidas, setSalidas] = useState([]); // [{id, nombre, fabricante, estado}] (MIDI Output, para feedback de LEDs)
+  const [salidaFeedbackId, setSalidaFeedbackId] = useState(""); // output elegido para el feedback
+  const [feedbackHabilitado, setFeedbackHabilitado] = useState(true);
   const [modoAprendizaje, setModoAprendizaje] = useState(null); // controlId en espera, o null
   const [ultimaSenal, setUltimaSenal] = useState(null); // { ts, tipo, canal, dato1 } (throttled, para UI en vivo)
   const [logSenales, setLogSenales] = useState([]); // últimas señales crudas (monitor en vivo)
@@ -167,6 +170,11 @@ export function MidiProvider({ children }) {
   const asistenteActivoRef = useRef(false);
   const asistenteListaRef = useRef([]);
   const asistenteIdxRef = useRef(0);
+
+  const salidaFeedbackIdRef = useRef(salidaFeedbackId);
+  salidaFeedbackIdRef.current = salidaFeedbackId;
+  const feedbackHabilitadoRef = useRef(feedbackHabilitado);
+  feedbackHabilitadoRef.current = feedbackHabilitado;
 
   // ---------- Carga de perfiles desde el backend (por usuario) ----------
   const cargarPerfiles = useCallback(async () => {
@@ -288,6 +296,34 @@ export function MidiProvider({ children }) {
     }
   }, []);
 
+  // ---------- MIDI Output: feedback de LEDs en el controlador ----------
+  // Envía el MISMO mensaje (tipo/canal/dato1) que el usuario usó para mapear
+  // un control, para que el firmware del controlador encienda/apague el LED
+  // de ese botón/pad. Si no hay salida elegida o el control no tiene un
+  // mapeo de tipo "note" (la mayoría de pads con LED usan notas), no hace
+  // nada — es una mejora opcional, nunca bloqueante.
+  const enviarFeedback = useCallback((controlId, encendido) => {
+    if (!feedbackHabilitadoRef.current) return;
+    const salidaId = salidaFeedbackIdRef.current;
+    if (!salidaId) return;
+    const salida = accesoRef.current?.outputs?.get(salidaId);
+    if (!salida) return;
+    const asignacion = mapeoActualRef.current.find((a) => a.controlId === controlId);
+    if (!asignacion) return;
+    const { mensajeTipo, canal, dato1 } = asignacion;
+    try {
+      if (mensajeTipo === "note" || mensajeTipo === "noteoff") {
+        const status = 0x90 | (canal & 0x0f); // Note On (velocity 0 = apagado en la mayoría de firmwares)
+        salida.send([status, dato1, encendido ? 127 : 0]);
+      } else if (mensajeTipo === "cc") {
+        const status = 0xb0 | (canal & 0x0f);
+        salida.send([status, dato1, encendido ? 127 : 0]);
+      }
+    } catch {
+      /* dispositivo desconectado justo al enviar: se ignora */
+    }
+  }, []);
+
   // ---------- Web MIDI: acceso, dispositivos, escucha y plug-and-play ----------
   useEffect(() => {
     if (!soportado) return;
@@ -304,6 +340,28 @@ export function MidiProvider({ children }) {
         });
       }
       if (activo) setDispositivos(lista);
+      return lista;
+    }
+
+    function refrescarSalidas(acceso) {
+      const lista = [];
+      for (const output of acceso.outputs.values()) {
+        lista.push({
+          id: output.id,
+          nombre: output.name || "Controlador MIDI",
+          fabricante: output.manufacturer || "",
+          estado: output.state,
+        });
+      }
+      if (activo) {
+        setSalidas(lista);
+        // Auto-selección: si no hay salida elegida y aparece exactamente una,
+        // se usa automáticamente (caso común: un solo controlador conectado).
+        setSalidaFeedbackId((actual) => {
+          if (actual && lista.some((s) => s.id === actual)) return actual;
+          return lista.length === 1 ? lista[0].id : actual;
+        });
+      }
       return lista;
     }
 
@@ -342,10 +400,12 @@ export function MidiProvider({ children }) {
         accesoRef.current = acceso;
         setAccesoListo(true);
         const inicial = refrescarDispositivos(acceso);
+        refrescarSalidas(acceso);
         conectarEntradas(acceso);
         for (const d of inicial) manejarConexion(d.nombre);
         acceso.onstatechange = (e) => {
           const lista = refrescarDispositivos(acceso);
+          refrescarSalidas(acceso);
           conectarEntradas(acceso);
           if (e?.port?.type === "input" && e.port.state === "connected") {
             manejarConexion(e.port.name || "Controlador MIDI");
@@ -578,6 +638,10 @@ export function MidiProvider({ children }) {
   const descartarSugerencia = useCallback(() => setSugerenciaDispositivo(null), []);
   const descartarAvisoConexion = useCallback(() => setAvisoConexion(null), []);
 
+  // ---------- MIDI Output: preferencias de feedback ----------
+  const elegirSalidaFeedback = useCallback((id) => setSalidaFeedbackId(id), []);
+  const alternarFeedbackHabilitado = useCallback(() => setFeedbackHabilitado((v) => !v), []);
+
   // ---------- Exportar / importar (archivo tipo perfil, formato propio) ----------
   const exportarPerfil = useCallback(() => {
     const perfil = perfilesRef.current.find((p) => p.id === perfilActivoId);
@@ -653,6 +717,13 @@ export function MidiProvider({ children }) {
       iniciarAsistente,
       saltarAsistente,
       detenerAsistente,
+      // MIDI Output / feedback de LEDs
+      salidas,
+      salidaFeedbackId,
+      elegirSalidaFeedback,
+      feedbackHabilitado,
+      alternarFeedbackHabilitado,
+      enviarFeedback,
     }),
     [
       soportado,
@@ -693,6 +764,12 @@ export function MidiProvider({ children }) {
       iniciarAsistente,
       saltarAsistente,
       detenerAsistente,
+      salidas,
+      salidaFeedbackId,
+      elegirSalidaFeedback,
+      feedbackHabilitado,
+      alternarFeedbackHabilitado,
+      enviarFeedback,
     ]
   );
 
@@ -738,4 +815,19 @@ export function useMidiEtiqueta(controlId, texto) {
   useEffect(() => {
     return registrarEtiqueta(controlId, texto);
   }, [registrarEtiqueta, controlId, texto]);
+}
+
+// Hook ligero de feedback: sincroniza el LED de un control físico (si el
+// usuario eligió una salida MIDI y el mensaje mapeado es Note/CC) con un
+// estado booleano del panel. Ejemplo: en el Soundboard, `activo` es "este
+// pad está sonando ahora" — cuando cambia, se envía Note On/Off al
+// controlador para que su LED lo refleje. No requiere que el control tenga
+// mapeo ni salida configurada: en ese caso simplemente no hace nada.
+export function useMidiFeedback(controlId, activo) {
+  const { enviarFeedback } = useMidi();
+  useEffect(() => {
+    enviarFeedback(controlId, !!activo);
+    // Al desmontar, apaga el LED para no dejarlo encendido "fantasma".
+    return () => enviarFeedback(controlId, false);
+  }, [enviarFeedback, controlId, activo]);
 }

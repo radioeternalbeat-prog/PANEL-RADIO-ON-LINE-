@@ -13,7 +13,18 @@ import {
 import { api } from "../../api/client";
 import { reportarNivel } from "../../audio/nivelBus";
 import { useMezclador } from "../../context/MezcladorContext";
-import { useMidiTarget } from "../../context/MidiContext";
+import { useMidiTarget, useMidiEtiqueta } from "../../context/MidiContext";
+
+// Sufijos de todos los controles definidos para un deck en el catálogo MIDI
+// (src/midi/controlesMidi.js -> controlesDeck). Se usan para anunciar, con
+// un solo nombre de pista, la etiqueta dinámica de TODOS los controles de
+// ese deck a la vez (así en el panel de mapeo ves "Play/Pausa — Blinding
+// Lights" en vez de solo "Play/Pausa").
+const SUFIJOS_DECK = [
+  "play", "cue", "vol", "high", "mid", "low", "eqReset", "filtro", "filtroReset",
+  "tempo", "tempoReset", "tap", "sync", "hotcue1", "hotcue2", "hotcue3",
+  "loop1", "loop2", "loop4", "salirLoop",
+];
 
 // Crossfade de igual potencia: x=0 -> todo A, x=1 -> todo B.
 function gananciasCross(x) {
@@ -714,6 +725,17 @@ function Deck({
   useMidiTarget(`deck.${id}.loop2`, () => onLoop(id, 2));
   useMidiTarget(`deck.${id}.loop4`, () => onLoop(id, 4));
   useMidiTarget(`deck.${id}.salirLoop`, () => onSalirLoop(id));
+
+  // --- Etiqueta dinámica: anuncia el nombre de la pista cargada en TODOS
+  // los controles de este deck, para que en el panel de mapeo se vea, por
+  // ejemplo, "Hot Cue 1 — Blinding Lights" en vez de solo "Hot Cue 1".
+  const nombrePista = estado.track
+    ? `${estado.track.titulo}${estado.track.artista ? " — " + estado.track.artista : ""}`
+    : null;
+  for (const sufijo of SUFIJOS_DECK) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useMidiEtiqueta(`deck.${id}.${sufijo}`, nombrePista);
+  }
 
   return (
     <div className="rounded-xl border border-line bg-surface2 p-4">
