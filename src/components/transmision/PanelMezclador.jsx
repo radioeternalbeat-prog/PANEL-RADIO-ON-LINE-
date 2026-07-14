@@ -13,6 +13,7 @@ import {
 import { api } from "../../api/client";
 import { reportarNivel } from "../../audio/nivelBus";
 import { useMezclador } from "../../context/MezcladorContext";
+import { useMidiTarget } from "../../context/MidiContext";
 
 // Crossfade de igual potencia: x=0 -> todo A, x=1 -> todo B.
 function gananciasCross(x) {
@@ -259,6 +260,12 @@ export default function PanelMezclador() {
     const g = grafoRef.current;
     if (g) g.masterGain.gain.value = master;
   }, [master]);
+
+  // --- Mapeo MIDI: crossfader, master y micrófono se controlan igual desde
+  // el software que desde un controlador físico (mismo camino de estado).
+  useMidiTarget("mezclador.crossfader", (v) => setCross(v));
+  useMidiTarget("mezclador.master", (v) => setMaster(v));
+  useMidiTarget("mezclador.mic", () => toggleMic());
 
   // Bucle principal: medidores VU, wrap de loops y ducking por micrófono.
   useEffect(() => {
@@ -651,6 +658,28 @@ function Deck({
   onTap, onSync, onHotCue, onLimpiarCue, onLoop, onSalirLoop, getAudio, medRef, derecha,
 }) {
   const set = (campo) => (v) => setEstado((s) => ({ ...s, [campo]: v }));
+
+  // --- Mapeo MIDI: cada control físico llama exactamente a la misma función
+  // que su equivalente en pantalla, así que el comportamiento es idéntico
+  // (mismo throttling de Web Audio, mismo estado) venga de un fader real o
+  // de un arrastre con el mouse.
+  useMidiTarget(`deck.${id}.play`, () => onPlay(id));
+  useMidiTarget(`deck.${id}.cue`, () => onCue(id));
+  useMidiTarget(`deck.${id}.vol`, set("vol"));
+  useMidiTarget(`deck.${id}.high`, (v) => set("high")(v * 48 - 24));
+  useMidiTarget(`deck.${id}.mid`, (v) => set("mid")(v * 48 - 24));
+  useMidiTarget(`deck.${id}.low`, (v) => set("low")(v * 48 - 24));
+  useMidiTarget(`deck.${id}.filtro`, (v) => set("filtro")(v * 2 - 1));
+  useMidiTarget(`deck.${id}.tempo`, (v) => set("tempo")(0.5 + v));
+  useMidiTarget(`deck.${id}.tap`, () => onTap(id));
+  useMidiTarget(`deck.${id}.sync`, () => onSync(id));
+  useMidiTarget(`deck.${id}.hotcue1`, () => onHotCue(id, 0));
+  useMidiTarget(`deck.${id}.hotcue2`, () => onHotCue(id, 1));
+  useMidiTarget(`deck.${id}.hotcue3`, () => onHotCue(id, 2));
+  useMidiTarget(`deck.${id}.loop1`, () => onLoop(id, 1));
+  useMidiTarget(`deck.${id}.loop2`, () => onLoop(id, 2));
+  useMidiTarget(`deck.${id}.loop4`, () => onLoop(id, 4));
+  useMidiTarget(`deck.${id}.salirLoop`, () => onSalirLoop(id));
 
   return (
     <div className="rounded-xl border border-line bg-surface2 p-4">

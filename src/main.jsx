@@ -6,6 +6,7 @@ import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { OnAirProvider } from "./context/OnAirContext.jsx";
 import { PlayerProvider } from "./context/PlayerContext.jsx";
+import { MidiProvider } from "./context/MidiContext.jsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")).render(
@@ -13,11 +14,15 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <OnAirProvider>
-            <PlayerProvider>
-              <App />
-            </PlayerProvider>
-          </OnAirProvider>
+          {/* MidiProvider depende de useAuth (perfiles por usuario), por eso
+              va dentro de AuthProvider y envuelve el resto de la app. */}
+          <MidiProvider>
+            <OnAirProvider>
+              <PlayerProvider>
+                <App />
+              </PlayerProvider>
+            </OnAirProvider>
+          </MidiProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

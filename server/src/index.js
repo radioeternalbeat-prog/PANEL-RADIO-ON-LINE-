@@ -14,6 +14,7 @@ import autodjRoutes from "./routes/autodj.routes.js";
 import itunesRoutes from "./routes/itunes.routes.js";
 import samplesRoutes, { UPLOADS_DIR } from "./routes/samples.routes.js";
 import mensajesRoutes from "./routes/mensajes.routes.js";
+import midiRoutes from "./routes/midi.routes.js";
 import { mensajesRepo } from "./db/repos.js";
 import { iniciarWebSocket } from "./realtime.js";
 
@@ -57,6 +58,7 @@ app.use("/api/autodj", requiereAuth, autodjRoutes);
 app.use("/api/itunes", requiereAuth, itunesRoutes);
 app.use("/api/samples", requiereAuth, samplesRoutes);
 app.use("/api/mensajes", requiereAuth, mensajesRoutes);
+app.use("/api/midi", requiereAuth, midiRoutes);
 
 // 404 para rutas de API no encontradas
 app.use("/api", (req, res) => {

@@ -108,6 +108,22 @@ function crearEsquema() {
       origen TEXT DEFAULT 'manual',
       creado INTEGER
     );
+
+    -- Mapeos MIDI: cada usuario puede guardar varios perfiles (uno por
+    -- controlador físico) y activar el que esté usando en cada momento.
+    CREATE TABLE IF NOT EXISTS midi_mapeos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL,
+      nombre TEXT NOT NULL,
+      dispositivo TEXT,
+      mapeo TEXT NOT NULL DEFAULT '[]',
+      activo INTEGER DEFAULT 0,
+      creado INTEGER,
+      actualizado INTEGER,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_midi_mapeos_usuario ON midi_mapeos(usuario_id);
   `);
 }
 

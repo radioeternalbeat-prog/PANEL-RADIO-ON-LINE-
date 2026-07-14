@@ -1,5 +1,6 @@
 import { Music2, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
+import { useMidiTarget } from "../../context/MidiContext";
 
 function fmt(s) {
   if (!s || !Number.isFinite(s)) return "0:00";
@@ -24,6 +25,12 @@ export default function PanelReproductor() {
   } = usePlayer();
 
   const pct = progreso.total ? (progreso.actual / progreso.total) * 100 : 0;
+
+  // --- Mapeo MIDI: transporte del reproductor principal (AutoDJ/estación).
+  useMidiTarget("reproductor.playPause", () => alternar());
+  useMidiTarget("reproductor.siguiente", () => siguiente());
+  useMidiTarget("reproductor.anterior", () => anterior());
+  useMidiTarget("reproductor.volumen", (v) => setVolumen(v));
 
   return (
     <div className="card relative flex h-full flex-col overflow-hidden p-5">

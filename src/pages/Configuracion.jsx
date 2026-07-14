@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Copy, Save, Server, Sliders, Users } from "lucide-react";
 import { bitratesSoportados, estaciones, formatosSoportados } from "../data/mockData";
+import PanelMidiMapping from "../components/configuracion/PanelMidiMapping";
 
 function Campo({ label, children }) {
   return (
@@ -159,6 +160,11 @@ export default function Configuracion() {
           )}
         </div>
       </form>
+
+      {/* Mapeo MIDI: cada usuario conecta su propio controlador y asigna
+          libremente los controles del mezclador, audifonos, reproductor y
+          soundboard. El perfil se guarda en la cuenta del usuario. */}
+      <PanelMidiMapping />
     </div>
   );
 }

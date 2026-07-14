@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Headphones, Volume2 } from "lucide-react";
 import { useMezclador } from "../../context/MezcladorContext";
+import { useMidiTarget } from "../../context/MidiContext";
 
 const SOPORTA_SINK = typeof Audio !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
 
@@ -27,6 +28,13 @@ export default function PanelAudifonos() {
   }, [refrescarSalidas]);
 
   const algunCue = cue.A || cue.B;
+
+  // --- Mapeo MIDI: mismos toggles/faders que la UI, disparados por un
+  // controlador físico (útil para monitorear con las manos en la mezcla).
+  useMidiTarget("audifonos.cueA", () => alternarCue("A"));
+  useMidiTarget("audifonos.cueB", () => alternarCue("B"));
+  useMidiTarget("audifonos.volumen", (v) => setMonitorVol(v));
+  useMidiTarget("audifonos.mezcla", (v) => setMezcla(v));
 
   return (
     <div className="card flex flex-col p-5">

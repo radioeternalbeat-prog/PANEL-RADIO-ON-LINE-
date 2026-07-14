@@ -273,6 +273,117 @@ export const samplesRepo = {
   },
 };
 
+// ---------- Mapeos MIDI (perfiles de controlador por usuario) ----------
+function mapMidiMapeo(r) {
+  if (!r) return null;
+  let mapeo = [];
+  try {
+    mapeo = JSON.parse(r.mapeo || "[]");
+  } catch {
+    mapeo = [];
+  }
+  return {
+    id: r.id,
+    usuarioId: r.usuario_id,
+    nombre: r.nombre,
+    dispositivo: r.dispositivo,
+    mapeo,
+    activo: !!r.activo,
+    creado: r.creado,
+    actualizado: r.actualizado,
+  };
+}
+
+export const midiMapeosRepo = {
+  listarPorUsuario(usuarioId) {
+    return db
+      .prepare("SELECT * FROM midi_mapeos WHERE usuario_id = ? ORDER BY actualizado DESC")
+      .all(usuarioId)
+      .map(mapMidiMapeo);
+  },
+  obtener(id, usuarioId) {
+    return mapMidiMapeo(
+      db.prepare("SELECT * FROM midi_mapeos WHERE id = ? AND usuario_id = ?").get(id, usuarioId)
+    );
+  },
+  activo(usuarioId) {
+    return mapMidiMapeo(
+      db
+        .prepare("SELECT * FROM midi_mapeos WHERE usuario_id = ? AND activo = 1")
+        .get(usuarioId)
+    );
+  },
+  crear(usuarioId, { nombre, dispositivo, mapeo, activo }) {
+    const ahora = Date.now();
+    if (activo) {
+      db.prepare("UPDATE midi_mapeos SET activo = 0 WHERE usuario_id = ?").run(usuarioId);
+    }
+    const info = db
+      .prepare(
+        `INSERT INTO midi_mapeos (usuario_id, nombre, dispositivo, mapeo, activo, creado, actualizado)
+         VALUES (?,?,?,?,?,?,?)`
+      )
+      .run(
+        usuarioId,
+        nombre || "Mi controlador",
+        dispositivo || null,
+        JSON.stringify(mapeo || []),
+        activo ? 1 : 0,
+        ahora,
+        ahora
+      );
+    return this.obtener(info.lastInsertRowid, usuarioId);
+  },
+  actualizar(id, usuarioId, { nombre, dispositivo, mapeo }) {
+    const actual = this.obtener(id, usuarioId);
+    if (!actual) return null;
+    const sets = ["actualizado = ?"];
+    const vals = [Date.now()];
+    if (nombre !== undefined) {
+      sets.push("nombre = ?");
+      vals.push(nombre);
+    }
+    if (dispositivo !== undefined) {
+      sets.push("dispositivo = ?");
+      vals.push(dispositivo);
+    }
+    if (mapeo !== undefined) {
+      sets.push("mapeo = ?");
+      vals.push(JSON.stringify(mapeo));
+    }
+    db.prepare(`UPDATE midi_mapeos SET ${sets.join(", ")} WHERE id = ? AND usuario_id = ?`).run(
+      ...vals,
+      id,
+      usuarioId
+    );
+    return this.obtener(id, usuarioId);
+  },
+  activar(id, usuarioId) {
+    const actual = this.obtener(id, usuarioId);
+    if (!actual) return null;
+    db.exec("BEGIN");
+    try {
+      db.prepare("UPDATE midi_mapeos SET activo = 0 WHERE usuario_id = ?").run(usuarioId);
+      db.prepare("UPDATE midi_mapeos SET activo = 1, actualizado = ? WHERE id = ? AND usuario_id = ?").run(
+        Date.now(),
+        id,
+        usuarioId
+      );
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+    return this.obtener(id, usuarioId);
+  },
+  eliminar(id, usuarioId) {
+    const actual = this.obtener(id, usuarioId);
+    if (!actual) return null;
+    db.prepare("DELETE FROM midi_mapeos WHERE id = ? AND usuario_id = ?").run(id, usuarioId);
+    return actual;
+  },
+};
+
 // ---------- Mensajes (WhatsApp / oyentes) ----------
 function mapMensaje(r) {
   return {

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Mic, Music3, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { api, subirSample, urlRecurso } from "../../api/client";
+import { useMidiTarget } from "../../context/MidiContext";
+
+const PADS_MIDI = 9;
 
 const CATEGORIAS = [
   { id: "jingle", label: "Jingle", Icon: Music3 },
@@ -84,6 +87,18 @@ export default function PanelSoundboard() {
     } catch {
       cargar();
     }
+  }
+
+  // --- Mapeo MIDI: hasta 9 pads fijos por posición (igual que un
+  // controlador con grid de pads). Se declara un número fijo de hooks
+  // (las reglas de Hooks no permiten un número variable) y cada uno
+  // dispara el sample que ocupe esa posición en el momento de pulsar.
+  for (let i = 0; i < PADS_MIDI; i++) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useMidiTarget(`soundboard.pad${i + 1}`, () => {
+      const s = samples[i];
+      if (s) disparar(s);
+    });
   }
 
   return (

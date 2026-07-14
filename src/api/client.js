@@ -104,6 +104,14 @@ export const api = {
   samples: () => request("/samples"),
   eliminarSample: (id) => request(`/samples/${id}`, { metodo: "DELETE" }),
   // La subida usa multipart, se hace con un helper aparte.
+
+  // Mapeos MIDI (perfiles de controlador por usuario)
+  midiMapeos: () => request("/midi/mapeos"),
+  midiMapeoActivo: () => request("/midi/mapeos/activo"),
+  crearMidiMapeo: (datos) => request("/midi/mapeos", { metodo: "POST", cuerpo: datos }),
+  actualizarMidiMapeo: (id, datos) => request(`/midi/mapeos/${id}`, { metodo: "PUT", cuerpo: datos }),
+  activarMidiMapeo: (id) => request(`/midi/mapeos/${id}/activar`, { metodo: "POST" }),
+  eliminarMidiMapeo: (id) => request(`/midi/mapeos/${id}`, { metodo: "DELETE" }),
 };
 
 // Sube un sample (audio) vía multipart/form-data.
