@@ -4,18 +4,21 @@ import {
   ChevronDown,
   Download,
   FlipHorizontal2,
+  Gauge,
   Pencil,
   Piano,
   Plus,
   Radio,
+  RefreshCw,
+  Search,
+  SkipForward,
+  Sparkles,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { useMidi } from "../../context/MidiContext";
 import { controlesAgrupados } from "../../midi/controlesMidi";
-
-const GRUPOS = controlesAgrupados();
 
 function etiquetaMensaje({ mensajeTipo, canal, dato1 }) {
   const nombresTipo = { cc: "CC", note: "Nota", pitchbend: "Pitch bend" };
@@ -25,17 +28,26 @@ function etiquetaMensaje({ mensajeTipo, canal, dato1 }) {
     : `${base} ${dato1} · canal ${canal + 1}`;
 }
 
-function Fila({ control }) {
-  const { mapeoActual, modoAprendizaje, iniciarAprendizaje, cancelarAprendizaje, quitarAsignacion, invertirAsignacion } =
-    useMidi();
+function Fila({ control, resaltado }) {
+  const {
+    mapeoActual,
+    modoAprendizaje,
+    iniciarAprendizaje,
+    cancelarAprendizaje,
+    quitarAsignacion,
+    invertirAsignacion,
+    alternarRelativo,
+    ciclarSensibilidad,
+  } = useMidi();
 
   const asignacion = mapeoActual.find((a) => a.controlId === control.id);
   const aprendiendo = modoAprendizaje === control.id;
 
   return (
     <div
+      id={`control-${control.id}`}
       className={`flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
-        aprendiendo
+        aprendiendo || resaltado
           ? "border-brand-500 bg-brand-500/10"
           : asignacion
           ? "border-line bg-surface2"
@@ -48,6 +60,7 @@ function Fila({ control }) {
           <p className="text-[11px] text-muted">
             {etiquetaMensaje(asignacion)}
             {asignacion.invertido && " · invertido"}
+            {asignacion.relativo && ` · encoder ×${asignacion.sensibilidad || 1}`}
           </p>
         ) : (
           <p className="text-[11px] text-muted">Sin asignar</p>
@@ -56,17 +69,39 @@ function Fila({ control }) {
 
       <div className="flex items-center gap-1.5">
         {control.tipo === "absoluto" && asignacion && (
-          <button
-            onClick={() => invertirAsignacion(control.id)}
-            title="Invertir rango (útil si el fader queda al revés)"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
-              asignacion.invertido
-                ? "border-brand-500 bg-brand-500/15 text-brand-500"
-                : "border-line bg-surface text-muted hover:text-fg"
-            }`}
-          >
-            <FlipHorizontal2 size={14} />
-          </button>
+          <>
+            <button
+              onClick={() => alternarRelativo(control.id)}
+              title="Encoder relativo (sin tope, para knobs infinitos)"
+              className={`flex h-8 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold transition ${
+                asignacion.relativo
+                  ? "border-brand-500 bg-brand-500/15 text-brand-500"
+                  : "border-line bg-surface text-muted hover:text-fg"
+              }`}
+            >
+              <RefreshCw size={12} /> REL
+            </button>
+            {asignacion.relativo && (
+              <button
+                onClick={() => ciclarSensibilidad(control.id)}
+                title="Sensibilidad del encoder"
+                className="flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2 text-[10px] font-bold text-muted hover:text-fg"
+              >
+                <Gauge size={12} /> ×{asignacion.sensibilidad || 1}
+              </button>
+            )}
+            <button
+              onClick={() => invertirAsignacion(control.id)}
+              title="Invertir rango (útil si el fader queda al revés)"
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+                asignacion.invertido
+                  ? "border-brand-500 bg-brand-500/15 text-brand-500"
+                  : "border-line bg-surface text-muted hover:text-fg"
+              }`}
+            >
+              <FlipHorizontal2 size={14} />
+            </button>
+          </>
         )}
         {asignacion && (
           <button
@@ -101,8 +136,9 @@ function Fila({ control }) {
   );
 }
 
-function Grupo({ grupo, controles, contarAsignados }) {
+function Grupo({ grupo, controles, contarAsignados, resaltarId, forzarAbierto }) {
   const [abierto, setAbierto] = useState(false);
+  const mostrarAbierto = abierto || forzarAbierto;
   const asignados = contarAsignados(controles);
 
   return (
@@ -118,14 +154,14 @@ function Grupo({ grupo, controles, contarAsignados }) {
           </span>
           <ChevronDown
             size={16}
-            className={`text-muted transition-transform ${abierto ? "rotate-180" : ""}`}
+            className={`text-muted transition-transform ${mostrarAbierto ? "rotate-180" : ""}`}
           />
         </span>
       </button>
-      {abierto && (
+      {mostrarAbierto && (
         <div className="space-y-2 border-t border-line p-3">
           {controles.map((c) => (
-            <Fila key={c.id} control={c} />
+            <Fila key={c.id} control={c} resaltado={c.id === resaltarId} />
           ))}
         </div>
       )}
@@ -140,7 +176,9 @@ export default function PanelMidiMapping() {
     errorAcceso,
     dispositivos,
     ultimaSenal,
+    logSenales,
     mapeoActual,
+    totalControles,
     perfiles,
     perfilActivoId,
     cargandoPerfiles,
@@ -151,15 +189,24 @@ export default function PanelMidiMapping() {
     limpiarMapeo,
     exportarPerfil,
     importarPerfil,
+    asistenteActivo,
+    asistenteControlActual,
+    asistenteRestantes,
+    iniciarAsistente,
+    saltarAsistente,
+    detenerAsistente,
   } = useMidi();
 
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [creando, setCreando] = useState(false);
   const [renombrando, setRenombrando] = useState(false);
   const [nombreEdicion, setNombreEdicion] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [mostrarMonitor, setMostrarMonitor] = useState(false);
   const inputArchivo = useRef(null);
 
   const perfilActivo = perfiles.find((p) => p.id === perfilActivoId) || null;
+  const grupos = useMemo(() => controlesAgrupados(busqueda), [busqueda]);
 
   const contarAsignados = (controles) => {
     const ids = new Set(controles.map((c) => c.id));
@@ -230,11 +277,14 @@ export default function PanelMidiMapping() {
     }
   }
 
+  function onIniciarAsistente() {
+    const hayPendientes = iniciarAsistente();
+    if (!hayPendientes) {
+      alert("¡Ya tienes todos los controles asignados! Usa 'Limpiar todo' si quieres volver a mapear desde cero.");
+    }
+  }
+
   const totalAsignados = mapeoActual.length;
-  const totalControles = useMemo(
-    () => GRUPOS.reduce((n, g) => n + g.controles.length, 0),
-    []
-  );
 
   if (!soportado) {
     return (
@@ -278,8 +328,8 @@ export default function PanelMidiMapping() {
         )}
         {accesoListo && dispositivos.length === 0 && (
           <p className="text-sm text-muted">
-            Ningún controlador MIDI conectado. Conecta el tuyo por USB (o Bluetooth MIDI) y
-            aparecerá aquí automáticamente.
+            Ningún controlador MIDI conectado. Conecta el tuyo por USB (o Bluetooth MIDI): se
+            detecta automáticamente y no necesitas recargar la página.
           </p>
         )}
         {accesoListo && dispositivos.length > 0 && (
@@ -295,21 +345,42 @@ export default function PanelMidiMapping() {
             ))}
           </div>
         )}
-        {/* Indicador de última señal recibida: feedback táctil inmediato */}
-        {ultimaSenal && (
-          <p className="mt-2 flex items-center gap-2 text-[11px] text-muted">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500/70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
-            </span>
-            Última señal: {ultimaSenal.tipo === "cc" ? "CC" : ultimaSenal.tipo} {ultimaSenal.dato1}
-            {" · "}canal {ultimaSenal.canal + 1}
-          </p>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {/* Indicador de última señal recibida: feedback táctil inmediato */}
+          {ultimaSenal ? (
+            <p className="flex items-center gap-2 text-[11px] text-muted">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500/70" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+              </span>
+              Última señal: {ultimaSenal.tipo === "cc" ? "CC" : ultimaSenal.tipo} {ultimaSenal.dato1}
+              {" · "}canal {ultimaSenal.canal + 1}
+            </p>
+          ) : (
+            <span />
+          )}
+          <button
+            onClick={() => setMostrarMonitor((m) => !m)}
+            className="text-[11px] font-semibold text-brand-500 hover:underline"
+          >
+            {mostrarMonitor ? "Ocultar monitor" : "Ver monitor en vivo"}
+          </button>
+        </div>
+        {mostrarMonitor && (
+          <div className="mt-2 space-y-1 rounded-lg bg-surface p-2 font-mono text-[11px] text-muted">
+            {logSenales.length === 0 && <p>Mueve un control de tu MIDI para ver los mensajes aquí…</p>}
+            {logSenales.map((s, i) => (
+              <p key={s.ts + "-" + i}>
+                {s.tipo.toUpperCase().padEnd(9)} canal {s.canal + 1} · dato1 {String(s.dato1).padStart(3)} · dato2{" "}
+                {String(s.dato2).padStart(3)}
+              </p>
+            ))}
+          </div>
         )}
       </div>
 
       {/* Selector de perfiles */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {renombrando ? (
           <>
             <input
@@ -416,13 +487,71 @@ export default function PanelMidiMapping() {
         </div>
       ) : (
         <>
+          {/* Asistente de mapeo guiado */}
+          {asistenteActivo ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-500 bg-brand-500/10 px-4 py-3">
+              <Sparkles size={18} className="shrink-0 text-brand-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-fg">
+                  Asistente de mapeo: mueve el control físico para{" "}
+                  <strong>{asistenteControlActual}</strong>
+                </p>
+                <p className="text-[11px] text-muted">
+                  Quedan {asistenteRestantes} controles después de este. Puedes saltar el que no
+                  tenga tu controlador.
+                </p>
+              </div>
+              <button onClick={saltarAsistente} className="btn-ghost px-3 py-1.5 text-xs">
+                <SkipForward size={13} /> Saltar
+              </button>
+              <button
+                onClick={detenerAsistente}
+                className="btn-ghost px-3 py-1.5 text-xs hover:border-red-500/50 hover:text-red-500"
+              >
+                Detener
+              </button>
+            </div>
+          ) : (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface2 p-3">
+              <p className="text-sm text-muted">
+                <strong className="text-fg">Modo rápido:</strong> el asistente recorre todos los
+                controles pendientes uno por uno — solo mueve tu controlador en orden.
+              </p>
+              <button onClick={onIniciarAsistente} className="btn-primary px-3 py-1.5 text-xs">
+                <Sparkles size={14} /> Iniciar asistente
+              </button>
+            </div>
+          )}
+
           <p className="mb-3 text-sm text-muted">
-            Pulsa <strong className="text-fg">Asignar</strong> en el control que quieras mapear y
-            luego mueve el knob, fader o botón de tu controlador MIDI. Se guarda al instante.
+            O asigna control por control: pulsa <strong className="text-fg">Asignar</strong>, mueve
+            el knob/fader/botón de tu MIDI, y se guarda al instante.
           </p>
+
+          {/* Buscador de controles */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar un control (ej. crossfader, hotcue, pánico...)"
+              className="input pl-9 text-sm"
+            />
+          </div>
+
           <div className="space-y-2">
-            {GRUPOS.map(({ grupo, controles }) => (
-              <Grupo key={grupo} grupo={grupo} controles={controles} contarAsignados={contarAsignados} />
+            {grupos.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted">Ningún control coincide con “{busqueda}”.</p>
+            )}
+            {grupos.map(({ grupo, controles }) => (
+              <Grupo
+                key={grupo}
+                grupo={grupo}
+                controles={controles}
+                contarAsignados={contarAsignados}
+                resaltarId={asistenteControlActual}
+                forzarAbierto={!!busqueda || controles.some((c) => c.id === asistenteControlActual)}
+              />
             ))}
           </div>
           <div className="mt-4 flex justify-end">

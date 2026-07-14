@@ -62,6 +62,7 @@ export default function PanelMezclador() {
   const [micActivo, setMicActivo] = useState(false);
   const [dispositivos, setDispositivos] = useState([]);
   const [micDeviceId, setMicDeviceId] = useState("");
+  const masterAntesDeMuteRef = useRef(0.9);
 
   const grafoRef = useRef(null);
   const medAref = useRef(null);
@@ -264,8 +265,16 @@ export default function PanelMezclador() {
   // --- Mapeo MIDI: crossfader, master y micrófono se controlan igual desde
   // el software que desde un controlador físico (mismo camino de estado).
   useMidiTarget("mezclador.crossfader", (v) => setCross(v));
+  useMidiTarget("mezclador.crossfaderCentro", () => setCross(0.5));
   useMidiTarget("mezclador.master", (v) => setMaster(v));
+  useMidiTarget("mezclador.masterMute", () => alternarMuteMaster());
   useMidiTarget("mezclador.mic", () => toggleMic());
+  // "Pánico" global: para (y calla) ambos decks al instante desde cualquier
+  // pantalla, y también libera el mute del master si estaba activo.
+  useMidiTarget("global.panico", () => {
+    pausarDeck("A");
+    pausarDeck("B");
+  });
 
   // Bucle principal: medidores VU, wrap de loops y ducking por micrófono.
   useEffect(() => {
@@ -381,6 +390,26 @@ export default function PanelMezclador() {
       d.audio.pause();
       setters[id]((s) => ({ ...s, playing: false }));
     }
+  }
+
+  // Pausa forzada (usada por "Pánico"): a diferencia de reproducir(id), no
+  // alterna, solo detiene si estaba sonando.
+  function pausarDeck(id) {
+    const d = grafoRef.current?.[id];
+    if (d?.audio && !d.audio.paused) {
+      d.audio.pause();
+      setters[id]((s) => ({ ...s, playing: false }));
+    }
+  }
+
+  function alternarMuteMaster() {
+    setMaster((actual) => {
+      if (actual > 0) {
+        masterAntesDeMuteRef.current = actual;
+        return 0;
+      }
+      return masterAntesDeMuteRef.current || 0.9;
+    });
   }
 
   function cue(id) {
@@ -669,8 +698,13 @@ function Deck({
   useMidiTarget(`deck.${id}.high`, (v) => set("high")(v * 48 - 24));
   useMidiTarget(`deck.${id}.mid`, (v) => set("mid")(v * 48 - 24));
   useMidiTarget(`deck.${id}.low`, (v) => set("low")(v * 48 - 24));
+  useMidiTarget(`deck.${id}.eqReset`, () =>
+    setEstado((s) => ({ ...s, high: 0, mid: 0, low: 0 }))
+  );
   useMidiTarget(`deck.${id}.filtro`, (v) => set("filtro")(v * 2 - 1));
+  useMidiTarget(`deck.${id}.filtroReset`, () => set("filtro")(0));
   useMidiTarget(`deck.${id}.tempo`, (v) => set("tempo")(0.5 + v));
+  useMidiTarget(`deck.${id}.tempoReset`, () => set("tempo")(1));
   useMidiTarget(`deck.${id}.tap`, () => onTap(id));
   useMidiTarget(`deck.${id}.sync`, () => onSync(id));
   useMidiTarget(`deck.${id}.hotcue1`, () => onHotCue(id, 0));

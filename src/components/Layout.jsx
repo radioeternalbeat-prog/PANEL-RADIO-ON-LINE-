@@ -19,7 +19,10 @@ import { cuenta } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useOnAir } from "../context/OnAirContext";
+import { usePlayer } from "../context/PlayerContext";
+import { useMidiTarget } from "../context/MidiContext";
 import MiniReproductor from "./MiniReproductor";
+import AvisoMidi from "./AvisoMidi";
 
 const navItems = [
   { to: "/", label: "Estaciones", icon: LayoutDashboard, end: true },
@@ -47,13 +50,31 @@ export default function Layout() {
   const [abierto, setAbierto] = useState(false);
   const navigate = useNavigate();
   const { usuario, cerrarSesion } = useAuth();
-  const { enVivo } = useOnAir();
+  const { alternarTema } = useTheme();
+  const { enVivo, alternar: alternarOnAir } = useOnAir();
+  const { detener: detenerReproductor } = usePlayer();
   const persona = usuario || cuenta;
 
   function salir() {
     cerrarSesion();
     navigate("/login");
   }
+
+  // --- Mapeo MIDI global: disponible en cualquier pantalla porque Layout
+  // envuelve todas las rutas autenticadas (ver App.jsx). Ideal para asignar
+  // a botones fijos de un controlador (ej. los botones "Browse"/"Shift"
+  // de un DDJ) sin depender de qué panel esté abierto en ese momento.
+  useMidiTarget("global.navEstaciones", () => navigate("/"));
+  useMidiTarget("global.navTransmision", () => navigate("/transmision"));
+  useMidiTarget("global.navEstadisticas", () => navigate("/estadisticas"));
+  useMidiTarget("global.navAutodj", () => navigate("/autodj"));
+  useMidiTarget("global.navConfiguracion", () => navigate("/configuracion"));
+  useMidiTarget("global.tema", () => alternarTema());
+  useMidiTarget("global.onair", () => alternarOnAir());
+  // Pánico: corta el reproductor principal. Los paneles de Transmisión
+  // (Mezclador/Soundboard) escuchan la MISMA señal "global.panico" cuando
+  // están montados, así que si estás en cabina también corta decks y pads.
+  useMidiTarget("global.panico", () => detenerReproductor());
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
@@ -179,6 +200,7 @@ export default function Layout() {
       </div>
 
       <MiniReproductor />
+      <AvisoMidi />
     </div>
   );
 }

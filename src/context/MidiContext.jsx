@@ -9,20 +9,36 @@ import {
 } from "react";
 import { api } from "../api/client";
 import { useAuth } from "./AuthContext";
-import { buscarControl, claveMensaje } from "../midi/controlesMidi";
+import { CONTROLES_MIDI, buscarControl, claveMensaje } from "../midi/controlesMidi";
 
-// --- Contexto "ligero": lo usan los controles del mezclador/paneles para
+// --- Contexto "ligero": lo usan los controles de cualquier panel para
 // registrarse como objetivo de un control MIDI. Su valor NUNCA cambia de
 // identidad, así que suscribirse a él no provoca renders de más aunque el
 // usuario mueva un fader 30 veces por segundo (la respuesta táctil se
 // resuelve llamando directamente al callback, sin pasar por estado de React).
+//
+// Soporta MÚLTIPLES suscriptores por control (Set de callbacks): así, un
+// control "global" (navegación, pánico, tema) puede ser escuchado a la vez
+// por varios componentes montados (ej. el Reproductor y el Soundboard
+// reaccionan ambos a "Pánico"), y cada panel se registra/desregistra solo,
+// sin pisar el registro de otro.
 const MidiRegistroContext = createContext({ registrarControl: () => () => {} });
 
-// --- Contexto "rico": estado de dispositivos, perfiles y modo de
-// aprendizaje. Lo usa el panel de gestión de mapeos (Configuración).
+// --- Contexto "rico": estado de dispositivos, perfiles, aprendizaje,
+// asistente guiado y monitor en vivo. Lo usa el panel de gestión de mapeos.
 const MidiContext = createContext(null);
 
 const SOPORTADO = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
+
+// Sensibilidad base para encoders relativos (sin tope): a sensibilidad 1,
+// cada "tick" de magnitud 1 mueve ~0.8% el valor virtual (~125 ticks para
+// recorrer todo el rango). El usuario puede multiplicarla x0.25 .. x4.
+const PASO_BASE_RELATIVO = 0.008;
+const NIVELES_SENSIBILIDAD = [0.25, 0.5, 1, 2, 4];
+
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
 
 function clasificarMensaje(data) {
   const status = data[0];
@@ -43,23 +59,36 @@ function clasificarMensaje(data) {
   return null;
 }
 
-function normalizar(msg) {
+function normalizarAbsoluto(msg) {
   if (msg.tipo === "pitchbend") return msg.dato2 / 16383;
   return msg.dato2 / 127; // cc o note
+}
+
+// Interpreta un valor de encoder relativo en formato "2's complement" (el más
+// común en controladores DJ/MIDI: Traktor, Ableton, DDJ, etc.): valores
+// 1..63 giran "hacia adelante" con esa magnitud, 65..127 giran "hacia atrás".
+function deltaRelativo(dato2) {
+  if (!dato2) return 0;
+  if (dato2 < 64) return dato2;
+  return -(128 - dato2);
 }
 
 export function MidiProvider({ children }) {
   const { usuario } = useAuth();
 
-  // ---------- Registro de controles (parte "ligera") ----------
-  const registroRef = useRef(new Map()); // controlId -> callback
+  // ---------- Registro de controles (parte "ligera", multi-suscriptor) ----------
+  const registroRef = useRef(new Map()); // controlId -> Set<callback>
 
   const registrarControl = useCallback((controlId, callback) => {
-    registroRef.current.set(controlId, callback);
+    let set = registroRef.current.get(controlId);
+    if (!set) {
+      set = new Set();
+      registroRef.current.set(controlId, set);
+    }
+    set.add(callback);
     return () => {
-      if (registroRef.current.get(controlId) === callback) {
-        registroRef.current.delete(controlId);
-      }
+      set.delete(callback);
+      if (set.size === 0) registroRef.current.delete(controlId);
     };
   }, []);
 
@@ -71,12 +100,23 @@ export function MidiProvider({ children }) {
   const [errorAcceso, setErrorAcceso] = useState("");
   const [dispositivos, setDispositivos] = useState([]); // [{id, nombre, fabricante, estado}]
   const [modoAprendizaje, setModoAprendizaje] = useState(null); // controlId en espera, o null
-  const [ultimaSenal, setUltimaSenal] = useState(null); // { ts, tipo, canal, dato1 } (throttled)
+  const [ultimaSenal, setUltimaSenal] = useState(null); // { ts, tipo, canal, dato1 } (throttled, para UI en vivo)
+  const [logSenales, setLogSenales] = useState([]); // últimas señales crudas (monitor en vivo)
 
   const [perfiles, setPerfiles] = useState([]);
   const [perfilActivoId, setPerfilActivoId] = useState(null);
-  const [mapeoActual, setMapeoActual] = useState([]); // [{controlId, mensajeTipo, canal, dato1, invertido}]
+  const [mapeoActual, setMapeoActual] = useState([]); // [{controlId, mensajeTipo, canal, dato1, invertido, relativo, sensibilidad}]
   const [cargandoPerfiles, setCargandoPerfiles] = useState(false);
+
+  // Plug-and-play: sugerencia de perfil cuando se detecta un dispositivo
+  // nuevo sin perfil asociado, y aviso cuando se activa uno automáticamente.
+  const [sugerenciaDispositivo, setSugerenciaDispositivo] = useState(null); // { nombre }
+  const [avisoConexion, setAvisoConexion] = useState(null); // { nombre, perfilActivado }
+
+  // Asistente de mapeo guiado: recorre los controles pendientes uno por uno.
+  const [asistenteActivo, setAsistenteActivo] = useState(false);
+  const [asistenteControlActual, setAsistenteControlActual] = useState(null);
+  const [asistenteRestantes, setAsistenteRestantes] = useState(0);
 
   const accesoRef = useRef(null);
   const mapeoActualRef = useRef(mapeoActual);
@@ -85,6 +125,14 @@ export function MidiProvider({ children }) {
   modoAprendizajeRef.current = modoAprendizaje;
   const timeoutAprendizajeRef = useRef(null);
   const ultimaSenalTsRef = useRef(0);
+  const valoresRelativosRef = useRef(new Map()); // controlId -> valor virtual 0..1
+  const dispositivosVistosRef = useRef(new Set()); // nombres ya notificados en esta sesión
+  const perfilesRef = useRef(perfiles);
+  perfilesRef.current = perfiles;
+
+  const asistenteActivoRef = useRef(false);
+  const asistenteListaRef = useRef([]);
+  const asistenteIdxRef = useRef(0);
 
   // ---------- Carga de perfiles desde el backend (por usuario) ----------
   const cargarPerfiles = useCallback(async () => {
@@ -112,9 +160,37 @@ export function MidiProvider({ children }) {
     }
   }, [usuario, cargarPerfiles]);
 
+  // ---------- Avance del asistente guiado ----------
+  const avanzarAsistente = useCallback(() => {
+    if (!asistenteActivoRef.current) return;
+    const lista = asistenteListaRef.current;
+    let idx = asistenteIdxRef.current + 1;
+    // Saltar controles que ya quedaron asignados por otro medio mientras tanto.
+    while (idx < lista.length && mapeoActualRef.current.some((a) => a.controlId === lista[idx])) {
+      idx++;
+    }
+    if (idx >= lista.length) {
+      asistenteActivoRef.current = false;
+      setAsistenteActivo(false);
+      setAsistenteControlActual(null);
+      setAsistenteRestantes(0);
+      return;
+    }
+    asistenteIdxRef.current = idx;
+    setAsistenteControlActual(lista[idx]);
+    setAsistenteRestantes(lista.length - idx - 1);
+    iniciarAprendizajeInterno(lista[idx]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const avanzarAsistenteRef = useRef(avanzarAsistente);
+  avanzarAsistenteRef.current = avanzarAsistente;
+
   // ---------- Aplicar un mensaje MIDI entrante ----------
   const aplicarMensaje = useCallback((msg) => {
-    // Throttle de la señal visible en la UI (~15 actualizaciones/seg como máximo).
+    // Log crudo para el monitor en vivo (acotado a las últimas 8 señales).
+    setLogSenales((prev) => [{ ts: Date.now(), ...msg }, ...prev].slice(0, 8));
+
+    // Señal visible "resumida" con throttle (~15 actualizaciones/seg como máximo).
     const ahora = performance.now();
     if (ahora - ultimaSenalTsRef.current > 65) {
       ultimaSenalTsRef.current = ahora;
@@ -130,6 +206,8 @@ export function MidiProvider({ children }) {
         canal: msg.canal,
         dato1: msg.dato1,
         invertido: false,
+        relativo: false,
+        sensibilidad: 1,
       };
       setMapeoActual((prev) => {
         const clave = claveMensaje(msg);
@@ -140,6 +218,9 @@ export function MidiProvider({ children }) {
       });
       setModoAprendizaje(null);
       clearTimeout(timeoutAprendizajeRef.current);
+      if (asistenteActivoRef.current) {
+        setTimeout(() => avanzarAsistenteRef.current?.(), 300);
+      }
       return;
     }
 
@@ -150,20 +231,30 @@ export function MidiProvider({ children }) {
 
     const control = buscarControl(asignacion.controlId);
     if (!control) return;
-    const callback = registroRef.current.get(asignacion.controlId);
-    if (!callback) return;
+    const callbacks = registroRef.current.get(asignacion.controlId);
+    if (!callbacks || callbacks.size === 0) return;
 
     if (control.tipo === "absoluto") {
-      let valor = normalizar(msg);
-      if (asignacion.invertido) valor = 1 - valor;
-      callback(valor);
+      let valor;
+      if (asignacion.relativo) {
+        const signed = deltaRelativo(msg.dato2) * (asignacion.invertido ? -1 : 1);
+        const actual = valoresRelativosRef.current.has(asignacion.controlId)
+          ? valoresRelativosRef.current.get(asignacion.controlId)
+          : 0.5;
+        valor = clamp01(actual + signed * PASO_BASE_RELATIVO * (asignacion.sensibilidad || 1));
+        valoresRelativosRef.current.set(asignacion.controlId, valor);
+      } else {
+        valor = normalizarAbsoluto(msg);
+        if (asignacion.invertido) valor = 1 - valor;
+      }
+      for (const cb of callbacks) cb(valor);
     } else {
       // "trigger" y "toggle": disparan solo al presionar (dato2 > 0), nunca al soltar.
-      if (msg.dato2 > 0) callback();
+      if (msg.dato2 > 0) for (const cb of callbacks) cb();
     }
   }, []);
 
-  // ---------- Web MIDI: acceso, dispositivos y escucha ----------
+  // ---------- Web MIDI: acceso, dispositivos, escucha y plug-and-play ----------
   useEffect(() => {
     if (!soportado) return;
     let activo = true;
@@ -179,6 +270,7 @@ export function MidiProvider({ children }) {
         });
       }
       if (activo) setDispositivos(lista);
+      return lista;
     }
 
     function onMidiMessage(evento) {
@@ -192,17 +284,39 @@ export function MidiProvider({ children }) {
       }
     }
 
+    // Cuando se conecta un dispositivo nuevo: si ya existe un perfil guardado
+    // para ese nombre, lo activa solo; si no, sugiere crear uno (una sola vez
+    // por dispositivo en esta sesión, para no ser insistente).
+    function manejarConexion(nombre) {
+      if (dispositivosVistosRef.current.has(nombre)) return;
+      dispositivosVistosRef.current.add(nombre);
+      const existente = perfilesRef.current.find((p) => p.dispositivo === nombre);
+      if (existente) {
+        if (!existente.activo) {
+          seleccionarPerfilRef.current?.(existente.id);
+        }
+        setAvisoConexion({ nombre, perfilActivado: true });
+      } else if (usuario) {
+        setSugerenciaDispositivo({ nombre });
+      }
+    }
+
     navigator
       .requestMIDIAccess({ sysex: false })
       .then((acceso) => {
         if (!activo) return;
         accesoRef.current = acceso;
         setAccesoListo(true);
-        refrescarDispositivos(acceso);
+        const inicial = refrescarDispositivos(acceso);
         conectarEntradas(acceso);
-        acceso.onstatechange = () => {
-          refrescarDispositivos(acceso);
+        for (const d of inicial) manejarConexion(d.nombre);
+        acceso.onstatechange = (e) => {
+          const lista = refrescarDispositivos(acceso);
           conectarEntradas(acceso);
+          if (e?.port?.type === "input" && e.port.state === "connected") {
+            manejarConexion(e.port.name || "Controlador MIDI");
+          }
+          void lista;
         };
       })
       .catch(() => {
@@ -217,7 +331,7 @@ export function MidiProvider({ children }) {
         acceso.onstatechange = null;
       }
     };
-  }, [soportado, aplicarMensaje]);
+  }, [soportado, aplicarMensaje, usuario]);
 
   // ---------- Persistencia del perfil activo ----------
   const guardarMapeo = useCallback(
@@ -262,12 +376,26 @@ export function MidiProvider({ children }) {
   }, [mapeoActual]);
 
   // ---------- Acciones de aprendizaje ----------
-  const iniciarAprendizaje = useCallback((controlId) => {
+  function iniciarAprendizajeInterno(controlId) {
     setModoAprendizaje(controlId);
     clearTimeout(timeoutAprendizajeRef.current);
     timeoutAprendizajeRef.current = setTimeout(() => {
       setModoAprendizaje((actual) => (actual === controlId ? null : actual));
+      // Si el asistente estaba esperando este control y nadie lo movió,
+      // se detiene para no dejarlo "escuchando" indefinidamente.
+      if (asistenteActivoRef.current && asistenteControlActualRef.current === controlId) {
+        asistenteActivoRef.current = false;
+        setAsistenteActivo(false);
+        setAsistenteControlActual(null);
+        setAsistenteRestantes(0);
+      }
     }, 9000);
+  }
+  const asistenteControlActualRef = useRef(asistenteControlActual);
+  asistenteControlActualRef.current = asistenteControlActual;
+
+  const iniciarAprendizaje = useCallback((controlId) => {
+    iniciarAprendizajeInterno(controlId);
   }, []);
 
   const cancelarAprendizaje = useCallback(() => {
@@ -276,6 +404,7 @@ export function MidiProvider({ children }) {
   }, []);
 
   const quitarAsignacion = useCallback((controlId) => {
+    valoresRelativosRef.current.delete(controlId);
     setMapeoActual((prev) => prev.filter((a) => a.controlId !== controlId));
   }, []);
 
@@ -285,7 +414,61 @@ export function MidiProvider({ children }) {
     );
   }, []);
 
-  const limpiarMapeo = useCallback(() => setMapeoActual([]), []);
+  const alternarRelativo = useCallback((controlId) => {
+    valoresRelativosRef.current.delete(controlId);
+    setMapeoActual((prev) =>
+      prev.map((a) =>
+        a.controlId === controlId ? { ...a, relativo: !a.relativo, sensibilidad: a.sensibilidad || 1 } : a
+      )
+    );
+  }, []);
+
+  const ciclarSensibilidad = useCallback((controlId) => {
+    setMapeoActual((prev) =>
+      prev.map((a) => {
+        if (a.controlId !== controlId) return a;
+        const idx = NIVELES_SENSIBILIDAD.indexOf(a.sensibilidad || 1);
+        const siguiente = NIVELES_SENSIBILIDAD[(idx + 1) % NIVELES_SENSIBILIDAD.length];
+        return { ...a, sensibilidad: siguiente };
+      })
+    );
+  }, []);
+
+  const limpiarMapeo = useCallback(() => {
+    valoresRelativosRef.current.clear();
+    setMapeoActual([]);
+  }, []);
+
+  // ---------- Asistente de mapeo guiado ----------
+  const iniciarAsistente = useCallback(() => {
+    const pendientes = CONTROLES_MIDI.map((c) => c.id).filter(
+      (id) => !mapeoActualRef.current.some((a) => a.controlId === id)
+    );
+    if (!pendientes.length) return false;
+    asistenteListaRef.current = pendientes;
+    asistenteIdxRef.current = 0;
+    asistenteActivoRef.current = true;
+    setAsistenteActivo(true);
+    setAsistenteControlActual(pendientes[0]);
+    setAsistenteRestantes(pendientes.length - 1);
+    iniciarAprendizajeInterno(pendientes[0]);
+    return true;
+  }, []);
+
+  const saltarAsistente = useCallback(() => {
+    clearTimeout(timeoutAprendizajeRef.current);
+    setModoAprendizaje(null);
+    avanzarAsistenteRef.current?.();
+  }, []);
+
+  const detenerAsistente = useCallback(() => {
+    asistenteActivoRef.current = false;
+    setAsistenteActivo(false);
+    setAsistenteControlActual(null);
+    setAsistenteRestantes(0);
+    clearTimeout(timeoutAprendizajeRef.current);
+    setModoAprendizaje(null);
+  }, []);
 
   // ---------- Gestión de perfiles ----------
   const crearPerfil = useCallback(async (nombre, dispositivo) => {
@@ -298,15 +481,17 @@ export function MidiProvider({ children }) {
     setPerfiles((prev) => [creado, ...prev.map((p) => ({ ...p, activo: false }))]);
     setPerfilActivoId(creado.id);
     mapeoPersistidoRef.current = [];
+    valoresRelativosRef.current.clear();
     setMapeoActual([]);
     return creado;
   }, []);
 
   const seleccionarPerfil = useCallback(
     async (id) => {
-      const perfil = perfiles.find((p) => p.id === id);
+      const perfil = perfilesRef.current.find((p) => p.id === id);
       if (!perfil) return;
       mapeoPersistidoRef.current = perfil.mapeo;
+      valoresRelativosRef.current.clear();
       setPerfilActivoId(id);
       setMapeoActual(perfil.mapeo);
       setPerfiles((prev) => prev.map((p) => ({ ...p, activo: p.id === id })));
@@ -316,8 +501,10 @@ export function MidiProvider({ children }) {
         /* noop */
       }
     },
-    [perfiles]
+    []
   );
+  const seleccionarPerfilRef = useRef(seleccionarPerfil);
+  seleccionarPerfilRef.current = seleccionarPerfil;
 
   const renombrarPerfil = useCallback(async (id, nombre) => {
     const actualizado = await api.actualizarMidiMapeo(id, { nombre });
@@ -341,18 +528,34 @@ export function MidiProvider({ children }) {
     [perfilActivoId]
   );
 
+  // ---------- Plug-and-play: sugerencia de dispositivo nuevo ----------
+  const crearPerfilParaSugerencia = useCallback(async () => {
+    if (!sugerenciaDispositivo) return;
+    const { nombre } = sugerenciaDispositivo;
+    setSugerenciaDispositivo(null);
+    try {
+      await crearPerfil(nombre, nombre);
+      setAvisoConexion({ nombre, perfilActivado: true, nuevo: true });
+    } catch {
+      alert("No se pudo crear el perfil automáticamente. Puedes crearlo manualmente abajo.");
+    }
+  }, [sugerenciaDispositivo, crearPerfil]);
+
+  const descartarSugerencia = useCallback(() => setSugerenciaDispositivo(null), []);
+  const descartarAvisoConexion = useCallback(() => setAvisoConexion(null), []);
+
   // ---------- Exportar / importar (archivo tipo perfil, formato propio) ----------
   const exportarPerfil = useCallback(() => {
-    const perfil = perfiles.find((p) => p.id === perfilActivoId);
+    const perfil = perfilesRef.current.find((p) => p.id === perfilActivoId);
     const datos = {
       formato: "panel-radio-online-midimap",
-      version: 1,
+      version: 2,
       nombre: perfil?.nombre || "Mi controlador",
       dispositivo: perfil?.dispositivo || "",
       mapeo: mapeoActual,
     };
     return JSON.stringify(datos, null, 2);
-  }, [perfiles, perfilActivoId, mapeoActual]);
+  }, [perfilActivoId, mapeoActual]);
 
   const importarPerfil = useCallback(async (texto) => {
     const datos = JSON.parse(texto);
@@ -366,9 +569,12 @@ export function MidiProvider({ children }) {
     setPerfiles((prev) => [creado, ...prev.map((p) => ({ ...p, activo: false }))]);
     setPerfilActivoId(creado.id);
     mapeoPersistidoRef.current = creado.mapeo;
+    valoresRelativosRef.current.clear();
     setMapeoActual(creado.mapeo);
     return creado;
   }, []);
+
+  const totalControles = CONTROLES_MIDI.length;
 
   const value = useMemo(
     () => ({
@@ -378,12 +584,17 @@ export function MidiProvider({ children }) {
       dispositivos,
       modoAprendizaje,
       ultimaSenal,
+      logSenales,
       iniciarAprendizaje,
       cancelarAprendizaje,
       quitarAsignacion,
       invertirAsignacion,
+      alternarRelativo,
+      ciclarSensibilidad,
+      nivelesSensibilidad: NIVELES_SENSIBILIDAD,
       limpiarMapeo,
       mapeoActual,
+      totalControles,
       perfiles,
       perfilActivoId,
       cargandoPerfiles,
@@ -394,6 +605,19 @@ export function MidiProvider({ children }) {
       exportarPerfil,
       importarPerfil,
       recargarPerfiles: cargarPerfiles,
+      // plug-and-play
+      sugerenciaDispositivo,
+      crearPerfilParaSugerencia,
+      descartarSugerencia,
+      avisoConexion,
+      descartarAvisoConexion,
+      // asistente guiado
+      asistenteActivo,
+      asistenteControlActual,
+      asistenteRestantes,
+      iniciarAsistente,
+      saltarAsistente,
+      detenerAsistente,
     }),
     [
       soportado,
@@ -402,12 +626,16 @@ export function MidiProvider({ children }) {
       dispositivos,
       modoAprendizaje,
       ultimaSenal,
+      logSenales,
       iniciarAprendizaje,
       cancelarAprendizaje,
       quitarAsignacion,
       invertirAsignacion,
+      alternarRelativo,
+      ciclarSensibilidad,
       limpiarMapeo,
       mapeoActual,
+      totalControles,
       perfiles,
       perfilActivoId,
       cargandoPerfiles,
@@ -418,6 +646,17 @@ export function MidiProvider({ children }) {
       exportarPerfil,
       importarPerfil,
       cargarPerfiles,
+      sugerenciaDispositivo,
+      crearPerfilParaSugerencia,
+      descartarSugerencia,
+      avisoConexion,
+      descartarAvisoConexion,
+      asistenteActivo,
+      asistenteControlActual,
+      asistenteRestantes,
+      iniciarAsistente,
+      saltarAsistente,
+      detenerAsistente,
     ]
   );
 
@@ -441,6 +680,8 @@ export function useMidi() {
 // - callback: función a invocar cuando llega la señal mapeada
 //   - controles "absoluto": recibe un valor normalizado 0..1
 //   - controles "trigger"/"toggle": se invoca sin argumentos
+// Se puede llamar desde varios componentes montados a la vez con el mismo
+// controlId (ej. "global.panico"): todos reciben la señal.
 export function useMidiTarget(controlId, callback) {
   const { registrarControl } = useContext(MidiRegistroContext);
   const callbackRef = useRef(callback);

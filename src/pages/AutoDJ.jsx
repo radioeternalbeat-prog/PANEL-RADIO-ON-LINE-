@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
+import { useMidiTarget } from "../context/MidiContext";
 import BuscadorItunes from "../components/BuscadorItunes";
 
 const tabs = [
@@ -96,6 +97,13 @@ export default function AutoDJ() {
       setImportandoXml(false);
     }
   }
+
+  // --- Mapeo MIDI: cambiar de pestaña y abrir el buscador de iTunes con un
+  // botón físico (útil en controladores con "páginas" o "modos" dedicados).
+  useMidiTarget("autodj.tabBiblioteca", () => setTab("biblioteca"));
+  useMidiTarget("autodj.tabPlaylists", () => setTab("playlists"));
+  useMidiTarget("autodj.tabProgramacion", () => setTab("programacion"));
+  useMidiTarget("autodj.buscarItunes", () => setMostrarItunes(true));
 
   if (cargando) {
     return (

@@ -22,15 +22,21 @@ export default function PanelReproductor() {
     setVolumen,
     cola,
     indiceCola,
+    detener,
+    setModoAuto,
   } = usePlayer();
 
   const pct = progreso.total ? (progreso.actual / progreso.total) * 100 : 0;
 
   // --- Mapeo MIDI: transporte del reproductor principal (AutoDJ/estación).
   useMidiTarget("reproductor.playPause", () => alternar());
+  useMidiTarget("reproductor.detener", () => detener());
   useMidiTarget("reproductor.siguiente", () => siguiente());
   useMidiTarget("reproductor.anterior", () => anterior());
+  useMidiTarget("reproductor.avanzar10", () => buscar((progreso.actual || 0) + 10));
+  useMidiTarget("reproductor.retroceder10", () => buscar(Math.max(0, (progreso.actual || 0) - 10)));
   useMidiTarget("reproductor.volumen", (v) => setVolumen(v));
+  useMidiTarget("reproductor.modoAuto", () => setModoAuto((a) => !a));
 
   return (
     <div className="card relative flex h-full flex-col overflow-hidden p-5">

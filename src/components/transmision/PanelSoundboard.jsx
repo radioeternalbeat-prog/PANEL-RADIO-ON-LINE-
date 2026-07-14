@@ -79,6 +79,14 @@ export default function PanelSoundboard() {
     setSonando((p) => (p === s.id ? null : p));
   }
 
+  function detenerTodos() {
+    Object.values(audios.current).forEach((a) => {
+      a.pause();
+      a.currentTime = 0;
+    });
+    setSonando(null);
+  }
+
   async function eliminar(s) {
     detener(s);
     setSamples((prev) => prev.filter((x) => x.id !== s.id));
@@ -100,6 +108,9 @@ export default function PanelSoundboard() {
       if (s) disparar(s);
     });
   }
+  useMidiTarget("soundboard.detenerTodos", () => detenerTodos());
+  // "Pánico" global también silencia el soundboard cuando este panel está montado.
+  useMidiTarget("global.panico", () => detenerTodos());
 
   return (
     <div className="card flex h-full flex-col p-5">
