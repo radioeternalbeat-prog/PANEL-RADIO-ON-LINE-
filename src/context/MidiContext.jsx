@@ -22,7 +22,10 @@ import { CONTROLES_MIDI, buscarControl, claveMensaje } from "../midi/controlesMi
 // por varios componentes montados (ej. el Reproductor y el Soundboard
 // reaccionan ambos a "Pánico"), y cada panel se registra/desregistra solo,
 // sin pisar el registro de otro.
-const MidiRegistroContext = createContext({ registrarControl: () => () => {} });
+const MidiRegistroContext = createContext({
+  registrarControl: () => () => {},
+  registrarEtiqueta: () => () => {},
+});
 
 // --- Contexto "rico": estado de dispositivos, perfiles, aprendizaje,
 // asistente guiado y monitor en vivo. Lo usa el panel de gestión de mapeos.
@@ -92,7 +95,38 @@ export function MidiProvider({ children }) {
     };
   }, []);
 
-  const registroApi = useMemo(() => ({ registrarControl }), [registrarControl]);
+  // ---------- Etiquetas dinámicas (nombres reales para controles como los
+  // pads del Soundboard: "Aplausos" en vez de "Pad 3"). Los componentes que
+  // conocen el nombre real lo registran vía useMidiEtiqueta; el panel de
+  // mapeo lo consulta con obtenerEtiqueta() para mostrarlo en vez del
+  // nombre genérico del catálogo.
+  const [etiquetas, setEtiquetas] = useState({}); // controlId -> texto
+  const registrarEtiqueta = useCallback((controlId, texto) => {
+    setEtiquetas((prev) => {
+      if (texto) {
+        if (prev[controlId] === texto) return prev;
+        return { ...prev, [controlId]: texto };
+      }
+      if (!(controlId in prev)) return prev;
+      const copia = { ...prev };
+      delete copia[controlId];
+      return copia;
+    });
+    return () => {
+      setEtiquetas((prev) => {
+        if (!(controlId in prev)) return prev;
+        const copia = { ...prev };
+        delete copia[controlId];
+        return copia;
+      });
+    };
+  }, []);
+  const obtenerEtiqueta = useCallback((controlId) => etiquetas[controlId] || null, [etiquetas]);
+
+  const registroApi = useMemo(
+    () => ({ registrarControl, registrarEtiqueta }),
+    [registrarControl, registrarEtiqueta]
+  );
 
   // ---------- Estado "rico" (dispositivos, perfiles, aprendizaje) ----------
   const [soportado] = useState(SOPORTADO);
@@ -595,6 +629,7 @@ export function MidiProvider({ children }) {
       limpiarMapeo,
       mapeoActual,
       totalControles,
+      obtenerEtiqueta,
       perfiles,
       perfilActivoId,
       cargandoPerfiles,
@@ -636,6 +671,7 @@ export function MidiProvider({ children }) {
       limpiarMapeo,
       mapeoActual,
       totalControles,
+      obtenerEtiqueta,
       perfiles,
       perfilActivoId,
       cargandoPerfiles,
@@ -690,4 +726,16 @@ export function useMidiTarget(controlId, callback) {
   useEffect(() => {
     return registrarControl(controlId, (...args) => callbackRef.current?.(...args));
   }, [registrarControl, controlId]);
+}
+
+// Hook ligero complementario: permite que un componente "anuncie" el nombre
+// real de un control dinámico (ej. el sample cargado en el pad 3 del
+// Soundboard) para que el panel de mapeo lo muestre en vez de la etiqueta
+// genérica del catálogo ("Aplausos" en vez de "Pad 3"). Se limpia solo al
+// desmontar o cuando el texto cambia a vacío/null.
+export function useMidiEtiqueta(controlId, texto) {
+  const { registrarEtiqueta } = useContext(MidiRegistroContext);
+  useEffect(() => {
+    return registrarEtiqueta(controlId, texto);
+  }, [registrarEtiqueta, controlId, texto]);
 }

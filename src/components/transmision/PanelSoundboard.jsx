@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Music3, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
+import { Loader2, Mic, Music3, Piano, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { api, subirSample, urlRecurso } from "../../api/client";
-import { useMidiTarget } from "../../context/MidiContext";
+import { useMidi, useMidiTarget, useMidiEtiqueta } from "../../context/MidiContext";
 
 const PADS_MIDI = 9;
 
@@ -25,6 +25,7 @@ export default function PanelSoundboard() {
   const [sonando, setSonando] = useState(null);
   const inputFile = useRef(null);
   const audios = useRef({}); // id -> HTMLAudioElement
+  const { mapeoActual } = useMidi();
 
   async function cargar() {
     try {
@@ -107,6 +108,11 @@ export default function PanelSoundboard() {
       const s = samples[i];
       if (s) disparar(s);
     });
+    // Etiqueta dinámica: el panel de mapeo mostrará el nombre real del
+    // sample ("Aplausos") en vez del genérico "Pad 3", y se actualiza sola
+    // si subes/borras samples y las posiciones se recorren.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useMidiEtiqueta(`soundboard.pad${i + 1}`, samples[i]?.nombre || null);
   }
   useMidiTarget("soundboard.detenerTodos", () => detenerTodos());
   // "Pánico" global también silencia el soundboard cuando este panel está montado.
@@ -158,8 +164,10 @@ export default function PanelSoundboard() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {samples.map((s) => {
+            {samples.map((s, i) => {
               const activo = sonando === s.id;
+              const controlId = i < PADS_MIDI ? `soundboard.pad${i + 1}` : null;
+              const tieneMidi = controlId && mapeoActual.some((a) => a.controlId === controlId);
               return (
                 <div key={s.id} className="group relative">
                   <button
@@ -176,6 +184,14 @@ export default function PanelSoundboard() {
                       {s.nombre}
                     </span>
                   </button>
+                  {tieneMidi && (
+                    <span
+                      className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow"
+                      title="Mapeado a tu controlador MIDI"
+                    >
+                      <Piano size={11} />
+                    </span>
+                  )}
                   <button
                     onClick={() => eliminar(s)}
                     className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"

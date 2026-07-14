@@ -38,10 +38,12 @@ function Fila({ control, resaltado }) {
     invertirAsignacion,
     alternarRelativo,
     ciclarSensibilidad,
+    obtenerEtiqueta,
   } = useMidi();
 
   const asignacion = mapeoActual.find((a) => a.controlId === control.id);
   const aprendiendo = modoAprendizaje === control.id;
+  const etiquetaReal = obtenerEtiqueta(control.id);
 
   return (
     <div
@@ -55,7 +57,12 @@ function Fila({ control, resaltado }) {
       }`}
     >
       <div className="min-w-[180px] flex-1">
-        <p className="text-sm font-medium text-fg">{control.etiqueta}</p>
+        <p className="text-sm font-medium text-fg">
+          {control.etiqueta}
+          {etiquetaReal && (
+            <span className="ml-1.5 font-normal text-muted">— {etiquetaReal}</span>
+          )}
+        </p>
         {asignacion ? (
           <p className="text-[11px] text-muted">
             {etiquetaMensaje(asignacion)}
