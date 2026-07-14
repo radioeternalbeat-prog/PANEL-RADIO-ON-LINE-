@@ -7,6 +7,32 @@ const router = Router();
 // siempre se filtran por req.usuario.id: cada usuario solo ve/edita sus
 // propios perfiles de mapeo MIDI.
 
+const TIPOS_MENSAJE_VALIDOS = new Set(["cc", "note", "noteoff", "pitchbend"]);
+
+// Valida la forma de CADA asignación dentro del array `mapeo` antes de
+// persistirlo (el repo solo hace JSON.stringify, así que si no se valida
+// aquí, se podría guardar un perfil corrupto vía llamadas directas a la API
+// que luego rompa el enrutamiento en el frontend).
+function validarMapeo(mapeo) {
+  if (!Array.isArray(mapeo)) return "El mapeo debe ser una lista de asignaciones.";
+  for (const [i, a] of mapeo.entries()) {
+    if (!a || typeof a !== "object") return `La asignación #${i + 1} no es un objeto válido.`;
+    if (typeof a.controlId !== "string" || !a.controlId) {
+      return `La asignación #${i + 1} necesita un controlId.`;
+    }
+    if (!TIPOS_MENSAJE_VALIDOS.has(a.mensajeTipo)) {
+      return `La asignación #${i + 1} tiene un mensajeTipo inválido: "${a.mensajeTipo}".`;
+    }
+    if (!Number.isInteger(a.canal) || a.canal < 0 || a.canal > 15) {
+      return `La asignación #${i + 1} necesita un canal MIDI válido (0-15).`;
+    }
+    if (!Number.isInteger(a.dato1) || a.dato1 < 0 || a.dato1 > 127) {
+      return `La asignación #${i + 1} necesita un dato1 válido (0-127).`;
+    }
+  }
+  return null;
+}
+
 // GET /api/midi/mapeos
 router.get("/mapeos", (req, res) => {
   res.json(midiMapeosRepo.listarPorUsuario(req.usuario.id));
@@ -30,8 +56,9 @@ router.post("/mapeos", (req, res) => {
   if (!nombre || !nombre.trim()) {
     return res.status(400).json({ mensaje: "El perfil necesita un nombre." });
   }
-  if (mapeo !== undefined && !Array.isArray(mapeo)) {
-    return res.status(400).json({ mensaje: "El mapeo debe ser una lista de asignaciones." });
+  if (mapeo !== undefined) {
+    const error = validarMapeo(mapeo);
+    if (error) return res.status(400).json({ mensaje: error });
   }
   const creado = midiMapeosRepo.crear(req.usuario.id, {
     nombre: nombre.trim(),
@@ -45,8 +72,9 @@ router.post("/mapeos", (req, res) => {
 // PUT /api/midi/mapeos/:id  { nombre?, dispositivo?, mapeo? }
 router.put("/mapeos/:id", (req, res) => {
   const { nombre, dispositivo, mapeo } = req.body || {};
-  if (mapeo !== undefined && !Array.isArray(mapeo)) {
-    return res.status(400).json({ mensaje: "El mapeo debe ser una lista de asignaciones." });
+  if (mapeo !== undefined) {
+    const error = validarMapeo(mapeo);
+    if (error) return res.status(400).json({ mensaje: error });
   }
   const actualizado = midiMapeosRepo.actualizar(Number(req.params.id), req.usuario.id, {
     nombre: nombre?.trim(),

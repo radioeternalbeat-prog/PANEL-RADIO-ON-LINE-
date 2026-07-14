@@ -131,6 +131,12 @@ export function controlesAgrupados(filtro = "") {
 // Clave única para identificar un mensaje MIDI entrante (independiente del
 // valor recibido), usada tanto para el modo "Learn" como para el
 // enrutamiento en tiempo real.
-export function claveMensaje({ tipo, canal, dato1 }) {
-  return `${tipo}:${canal}:${dato1}`;
+//
+// Se llama con dos formas de objeto distintas que deben producir la MISMA
+// clave para el mismo mensaje:
+//   - un mensaje MIDI en vivo (clasificarMensaje): { tipo, canal, dato1, dato2 }
+//   - una asignación guardada en el perfil: { controlId, mensajeTipo, canal, dato1, ... }
+// Por eso se acepta `tipo` O `mensajeTipo` indistintamente.
+export function claveMensaje({ tipo, mensajeTipo, canal, dato1 }) {
+  return `${tipo ?? mensajeTipo}:${canal}:${dato1}`;
 }
