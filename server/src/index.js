@@ -15,6 +15,9 @@ import itunesRoutes from "./routes/itunes.routes.js";
 import samplesRoutes, { UPLOADS_DIR } from "./routes/samples.routes.js";
 import mensajesRoutes from "./routes/mensajes.routes.js";
 import midiRoutes from "./routes/midi.routes.js";
+import backupRoutes from "./routes/backup.routes.js";
+import publicoRoutes from "./routes/publico.routes.js";
+import ahoraRoutes from "./routes/ahora.routes.js";
 import { mensajesRepo } from "./db/repos.js";
 import { iniciarWebSocket } from "./realtime.js";
 
@@ -22,14 +25,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// Marcador de versión para verificar qué build está desplegado.
+const VERSION = "1.10.0-azuracast-ready-2026-06";
+
+// CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
+const origenesPermitidos = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
+  : null;
+app.use(cors(origenesPermitidos ? { origin: origenesPermitidos } : {}));
 // Límite alto para permitir la importación de iTunes Library.xml (puede pesar varios MB).
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Salud del servicio (público)
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, servicio: "PANEL RADIO ONLINE API", ts: Date.now() });
+  res.json({ ok: true, servicio: "PANEL RADIO ONLINE API", version: VERSION, ts: Date.now() });
 });
 
 // Archivos de audio subidos (samples) — públicos para que <audio> los pueda cargar.
@@ -38,6 +48,11 @@ app.use("/uploads", express.static(UPLOADS_DIR));
 // Webhook público para recibir mensajes de WhatsApp (Twilio / Meta Cloud API).
 // Configura la URL de tu proveedor apuntando aquí. Acepta formatos comunes.
 app.post("/api/webhooks/whatsapp", (req, res) => {
+  // Protección opcional: si defines WEBHOOK_TOKEN, exige ?token=... en la URL.
+  const requerido = process.env.WEBHOOK_TOKEN;
+  if (requerido && req.query.token !== requerido) {
+    return res.status(401).json({ mensaje: "Token de webhook inválido." });
+  }
   const b = req.body || {};
   // Twilio: Body, From, ProfileName | Meta/genérico: text/message, from, name
   const texto = b.Body || b.text || b.message || b.mensaje;
@@ -57,8 +72,13 @@ app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
 app.use("/api/autodj", requiereAuth, autodjRoutes);
 app.use("/api/itunes", requiereAuth, itunesRoutes);
 app.use("/api/samples", requiereAuth, samplesRoutes);
+// Rutas públicas (sin autenticación): página de radio para oyentes.
+app.use("/api/publico", publicoRoutes);
+
 app.use("/api/mensajes", requiereAuth, mensajesRoutes);
 app.use("/api/midi", requiereAuth, midiRoutes);
+app.use("/api/backup", requiereAuth, backupRoutes);
+app.use("/api/ahora-suena", requiereAuth, ahoraRoutes);
 
 // 404 para rutas de API no encontradas
 app.use("/api", (req, res) => {

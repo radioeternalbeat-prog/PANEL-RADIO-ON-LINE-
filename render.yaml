@@ -16,8 +16,28 @@ services:
     plan: free
     buildCommand: npm install && npm run build && cd server && npm install
     startCommand: cd server && npm start
+    # Disco persistente para conservar la base de datos y los audios subidos.
+    # NOTA: los discos requieren un plan de pago en Render. En el plan gratuito,
+    # omite este bloque (los datos se reinician en cada despliegue) o usa una BD externa.
+    disk:
+      name: datos
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: JWT_SECRET
         generateValue: true
+      - key: WEBHOOK_TOKEN
+        generateValue: true
+      # Rutas persistentes (coinciden con el disco montado arriba).
+      - key: DB_PATH
+        value: /var/data/panel.db
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+      # Define una contraseña de admin fuerte (se usa al crear la BD por primera vez).
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Opcional: restringe CORS a tu dominio, ej. https://tu-sitio.onrender.com
+      - key: CORS_ORIGIN
+        sync: false

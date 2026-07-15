@@ -46,6 +46,13 @@ export default {
       },
       animation: {
         "spin-slow": "spin 2.5s linear infinite",
+        eq: "eq 0.9s ease-in-out infinite",
+      },
+      keyframes: {
+        eq: {
+          "0%, 100%": { height: "25%" },
+          "50%": { height: "100%" },
+        },
       },
     },
   },

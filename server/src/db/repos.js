@@ -16,6 +16,9 @@ function mapEstacion(r) {
     puerto: r.puerto,
     bitrate: r.bitrate,
     formato: r.formato,
+    streamUrl: r.stream_url || null,
+    embedToken: r.embed_token || null,
+    embedCanal: r.embed_canal || null,
     oyentesActuales: r.oyentes_actuales,
     oyentesMaximos: r.oyentes_maximos,
     picoOyentes: r.pico_oyentes,
@@ -45,6 +48,21 @@ function mapPlaylist(r) {
   return { id: r.id, nombre: r.nombre, tipo: r.tipo, pistas: r.pistas, activa: !!r.activa, peso: r.peso };
 }
 
+function mapPrograma(r) {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    inicio: r.inicio,
+    fin: r.fin,
+    dias: r.dias,
+    playlistId: r.playlist_id || null,
+    // Nombre real de la playlist enlazada; si no existe, el texto histórico.
+    playlist: r.pl_nombre || r.playlist || "",
+    playlistActiva: r.pl_activa == null ? null : !!r.pl_activa,
+    playlistPistas: r.pl_pistas || 0,
+  };
+}
+
 // ---------- Usuarios ----------
 export const usuariosRepo = {
   porUsuario(usuario) {
@@ -52,6 +70,9 @@ export const usuariosRepo = {
   },
   porId(id) {
     return db.prepare("SELECT * FROM usuarios WHERE id = ?").get(id);
+  },
+  cambiarClave(id, claveHash) {
+    db.prepare("UPDATE usuarios SET clave_hash = ? WHERE id = ?").run(claveHash, id);
   },
 };
 
@@ -67,9 +88,9 @@ export const estacionesRepo = {
     const id = `estacion-${Date.now()}`;
     db.prepare(`
       INSERT INTO estaciones
-        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato,
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url, embed_token, embed_canal,
          oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       id,
       d.nombre,
@@ -80,6 +101,9 @@ export const estacionesRepo = {
       Number(d.puerto) || 8000,
       Number(d.bitrate) || 128,
       d.formato || "MP3",
+      d.streamUrl || null,
+      d.embedToken || null,
+      d.embedCanal || null,
       0,
       Number(d.oyentesMaximos) || 100,
       0,
@@ -99,6 +123,9 @@ export const estacionesRepo = {
       puerto: "puerto",
       bitrate: "bitrate",
       formato: "formato",
+      streamUrl: "stream_url",
+      embedToken: "embed_token",
+      embedCanal: "embed_canal",
       oyentesMaximos: "oyentes_maximos",
     };
     const sets = [];
@@ -146,6 +173,63 @@ export const estacionesRepo = {
     db.prepare(
       "UPDATE estaciones SET oyentes_actuales=?, pico_oyentes=?, cancion_actual=? WHERE id=?"
     ).run(oyentesActuales, picoOyentes, cancionActual, id);
+  },
+  // Aplica estadísticas REALES leídas del servidor Icecast (incluye estado y uptime).
+  aplicarStatsReales(id, { estado, oyentesActuales, picoOyentes, cancionActual, uptime }) {
+    db.prepare(
+      "UPDATE estaciones SET estado=?, oyentes_actuales=?, pico_oyentes=?, cancion_actual=?, uptime=? WHERE id=?"
+    ).run(estado, oyentesActuales, picoOyentes, cancionActual, uptime, id);
+  },
+  // Fija el texto de "ahora suena" (reportado por el panel).
+  fijarCancion(id, texto) {
+    db.prepare("UPDATE estaciones SET cancion_actual=? WHERE id=?").run(texto, id);
+  },
+};
+
+// ---------- Historial de reproducción ----------
+function mapHistorial(r) {
+  return {
+    id: r.id,
+    estacionId: r.estacion_id,
+    titulo: r.titulo,
+    artista: r.artista,
+    artwork: r.artwork,
+    creado: r.creado,
+  };
+}
+
+export const historialRepo = {
+  // Agrega una canción al historial (evita duplicados consecutivos).
+  agregar({ estacionId, titulo, artista, artwork }) {
+    const ultimo = db
+      .prepare("SELECT titulo, artista FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 1")
+      .get(estacionId);
+    if (ultimo && ultimo.titulo === titulo && (ultimo.artista || "") === (artista || "")) {
+      return null; // misma canción que la anterior, no duplicar
+    }
+    const info = db
+      .prepare(
+        "INSERT INTO historial (estacion_id, titulo, artista, artwork, creado) VALUES (?,?,?,?,?)"
+      )
+      .run(estacionId, titulo, artista || null, artwork || null, Date.now());
+    // Poda: conserva las últimas 100 entradas por estación.
+    db.prepare(
+      `DELETE FROM historial WHERE estacion_id=? AND id NOT IN
+        (SELECT id FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 100)`
+    ).run(estacionId, estacionId);
+    return mapHistorial(db.prepare("SELECT * FROM historial WHERE id=?").get(info.lastInsertRowid));
+  },
+  ultimo(estacionId) {
+    const r = db
+      .prepare("SELECT * FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT 1")
+      .get(estacionId);
+    return r ? mapHistorial(r) : null;
+  },
+  listar(estacionId, limite = 10) {
+    return db
+      .prepare("SELECT * FROM historial WHERE estacion_id=? ORDER BY id DESC LIMIT ?")
+      .all(estacionId, limite)
+      .map(mapHistorial);
   },
 };
 
@@ -216,13 +300,181 @@ export const pistasRepo = {
 // ---------- Playlists y programación ----------
 export const playlistsRepo = {
   listar() {
-    return db.prepare("SELECT * FROM playlists ORDER BY id").all().map(mapPlaylist);
+    const filas = db.prepare("SELECT * FROM playlists ORDER BY id").all();
+    const conteos = db
+      .prepare("SELECT playlist_id, COUNT(*) AS n FROM playlist_pistas GROUP BY playlist_id")
+      .all();
+    const mapa = Object.fromEntries(conteos.map((c) => [c.playlist_id, c.n]));
+    return filas.map((r) => ({ ...mapPlaylist(r), pistas: mapa[r.id] || 0 }));
+  },
+  obtener(id) {
+    const r = db.prepare("SELECT * FROM playlists WHERE id = ?").get(id);
+    if (!r) return null;
+    const n = db.prepare("SELECT COUNT(*) AS n FROM playlist_pistas WHERE playlist_id = ?").get(id).n;
+    return { ...mapPlaylist(r), pistas: n };
+  },
+  crear({ nombre, tipo }) {
+    const info = db
+      .prepare("INSERT INTO playlists (nombre, tipo, pistas, activa, peso) VALUES (?,?,0,1,0)")
+      .run(nombre, tipo || "General");
+    return this.obtener(info.lastInsertRowid);
+  },
+  eliminar(id) {
+    const p = this.obtener(id);
+    if (!p) return null;
+    db.prepare("DELETE FROM playlist_pistas WHERE playlist_id = ?").run(id);
+    db.prepare("DELETE FROM playlists WHERE id = ?").run(id);
+    return p;
+  },
+  // Canciones de una playlist
+  pistasDe(id) {
+    return db
+      .prepare(
+        `SELECT p.* FROM pistas p
+         JOIN playlist_pistas pp ON pp.pista_id = p.id
+         WHERE pp.playlist_id = ?
+         ORDER BY pp.creado`
+      )
+      .all(id)
+      .map(mapPista);
+  },
+  agregarPista(id, pistaId) {
+    db.prepare(
+      "INSERT OR IGNORE INTO playlist_pistas (playlist_id, pista_id, creado) VALUES (?,?,?)"
+    ).run(id, pistaId, Date.now());
+    return this.obtener(id);
+  },
+  quitarPista(id, pistaId) {
+    db.prepare("DELETE FROM playlist_pistas WHERE playlist_id = ? AND pista_id = ?").run(id, pistaId);
+    return this.obtener(id);
   },
 };
 
 export const programacionRepo = {
   listar() {
-    return db.prepare("SELECT * FROM programacion ORDER BY id").all();
+    return db
+      .prepare(
+        `SELECT pr.*, pl.nombre AS pl_nombre, pl.activa AS pl_activa,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = pr.playlist_id) AS pl_pistas
+         FROM programacion pr
+         LEFT JOIN playlists pl ON pl.id = pr.playlist_id
+         ORDER BY pr.inicio`
+      )
+      .all()
+      .map(mapPrograma);
+  },
+  obtener(id) {
+    const r = db
+      .prepare(
+        `SELECT pr.*, pl.nombre AS pl_nombre, pl.activa AS pl_activa,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = pr.playlist_id) AS pl_pistas
+         FROM programacion pr
+         LEFT JOIN playlists pl ON pl.id = pr.playlist_id
+         WHERE pr.id = ?`
+      )
+      .get(id);
+    return r ? mapPrograma(r) : null;
+  },
+  crear({ nombre, inicio, fin, playlistId, dias }) {
+    const pl = playlistId ? db.prepare("SELECT nombre FROM playlists WHERE id = ?").get(playlistId) : null;
+    const info = db
+      .prepare(
+        "INSERT INTO programacion (nombre, inicio, fin, playlist, playlist_id, dias) VALUES (?,?,?,?,?,?)"
+      )
+      .run(nombre, inicio || "00:00", fin || "00:00", pl?.nombre || "", playlistId || null, dias || "");
+    return this.obtener(info.lastInsertRowid);
+  },
+  actualizar(id, d) {
+    const actual = db.prepare("SELECT * FROM programacion WHERE id = ?").get(id);
+    if (!actual) return null;
+    const sets = [];
+    const vals = [];
+    const campos = { nombre: "nombre", inicio: "inicio", fin: "fin", dias: "dias" };
+    for (const [k, col] of Object.entries(campos)) {
+      if (d[k] !== undefined) {
+        sets.push(`${col} = ?`);
+        vals.push(d[k]);
+      }
+    }
+    if (d.playlistId !== undefined) {
+      const pl = d.playlistId
+        ? db.prepare("SELECT nombre FROM playlists WHERE id = ?").get(d.playlistId)
+        : null;
+      sets.push("playlist_id = ?", "playlist = ?");
+      vals.push(d.playlistId || null, pl?.nombre || "");
+    }
+    if (sets.length) {
+      db.prepare(`UPDATE programacion SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);
+    }
+    return this.obtener(id);
+  },
+  eliminar(id) {
+    const p = this.obtener(id);
+    if (!p) return null;
+    db.prepare("DELETE FROM programacion WHERE id = ?").run(id);
+    return p;
+  },
+};
+
+function mapInsercion(r) {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    tipo: r.tipo,
+    playlistId: r.playlist_id || null,
+    playlist: r.pl_nombre || "",
+    playlistPistas: r.pl_pistas || 0,
+    cadaMin: r.cada_min,
+    activa: !!r.activa,
+  };
+}
+
+export const insercionesRepo = {
+  listar() {
+    return db
+      .prepare(
+        `SELECT i.*, pl.nombre AS pl_nombre,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = i.playlist_id) AS pl_pistas
+         FROM inserciones i
+         LEFT JOIN playlists pl ON pl.id = i.playlist_id
+         ORDER BY i.cada_min`
+      )
+      .all()
+      .map(mapInsercion);
+  },
+  obtener(id) {
+    const r = db
+      .prepare(
+        `SELECT i.*, pl.nombre AS pl_nombre,
+                (SELECT COUNT(*) FROM playlist_pistas pp WHERE pp.playlist_id = i.playlist_id) AS pl_pistas
+         FROM inserciones i
+         LEFT JOIN playlists pl ON pl.id = i.playlist_id
+         WHERE i.id = ?`
+      )
+      .get(id);
+    return r ? mapInsercion(r) : null;
+  },
+  actualizar(id, d) {
+    const actual = db.prepare("SELECT * FROM inserciones WHERE id = ?").get(id);
+    if (!actual) return null;
+    const sets = [];
+    const vals = [];
+    if (d.activa !== undefined) {
+      sets.push("activa = ?");
+      vals.push(d.activa ? 1 : 0);
+    }
+    if (d.cadaMin !== undefined) {
+      sets.push("cada_min = ?");
+      vals.push(Number(d.cadaMin));
+    }
+    if (d.nombre !== undefined) {
+      sets.push("nombre = ?");
+      vals.push(d.nombre);
+    }
+    if (sets.length) {
+      db.prepare(`UPDATE inserciones SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);
+    }
+    return this.obtener(id);
   },
 };
 
@@ -242,6 +494,7 @@ function mapSample(r) {
     id: r.id,
     nombre: r.nombre,
     categoria: r.categoria,
+    slot: r.slot ?? 0,
     url: r.url,
     color: r.color,
     creado: r.creado,
@@ -252,13 +505,17 @@ export const samplesRepo = {
   listar() {
     return db.prepare("SELECT * FROM samples ORDER BY id DESC").all().map(mapSample);
   },
-  agregar({ nombre, categoria, archivo, url, color }) {
+  agregar({ nombre, categoria, slot, archivo, url, color }) {
+    // Si ya hay un sample en esa categoría+slot, lo reemplaza (libera la caja).
+    if (categoria != null && slot != null) {
+      db.prepare("DELETE FROM samples WHERE categoria = ? AND slot = ?").run(categoria, slot);
+    }
     const info = db
       .prepare(
-        `INSERT INTO samples (nombre, categoria, archivo, url, color, creado)
-         VALUES (?,?,?,?,?,?)`
+        `INSERT INTO samples (nombre, categoria, slot, archivo, url, color, creado)
+         VALUES (?,?,?,?,?,?,?)`
       )
-      .run(nombre, categoria || "efecto", archivo, url, color || null, Date.now());
+      .run(nombre, categoria || "efecto", Number(slot) || 0, archivo, url, color || null, Date.now());
     return mapSample(db.prepare("SELECT * FROM samples WHERE id = ?").get(info.lastInsertRowid));
   },
   obtener(id) {

@@ -21,6 +21,13 @@ server/.env
 
 # Base de datos SQLite (datos locales)
 server/data/
+# Datos persistentes del VPS (BD + audios en producción)
+/data/
+
+# Streaming local (Docker)
+/out/
+/media/*
+!/media/.gitkeep
 
 # Editor directories and files
 .vscode/*

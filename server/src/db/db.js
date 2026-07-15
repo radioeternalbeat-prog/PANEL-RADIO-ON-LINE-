@@ -38,6 +38,9 @@ function crearEsquema() {
       puerto INTEGER,
       bitrate INTEGER,
       formato TEXT,
+      stream_url TEXT,
+      embed_token TEXT,
+      embed_canal TEXT,
       oyentes_actuales INTEGER DEFAULT 0,
       oyentes_maximos INTEGER DEFAULT 100,
       pico_oyentes INTEGER DEFAULT 0,
@@ -93,6 +96,7 @@ function crearEsquema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
       categoria TEXT DEFAULT 'efecto',
+      slot INTEGER DEFAULT 0,
       archivo TEXT NOT NULL,
       url TEXT NOT NULL,
       color TEXT,
@@ -106,6 +110,31 @@ function crearEsquema() {
       texto TEXT NOT NULL,
       estado TEXT DEFAULT 'pendiente',
       origen TEXT DEFAULT 'manual',
+      creado INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS playlist_pistas (
+      playlist_id INTEGER NOT NULL,
+      pista_id INTEGER NOT NULL,
+      creado INTEGER,
+      PRIMARY KEY (playlist_id, pista_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS inserciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      tipo TEXT DEFAULT 'jingle',
+      playlist_id INTEGER,
+      cada_min INTEGER DEFAULT 30,
+      activa INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS historial (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      estacion_id TEXT,
+      titulo TEXT,
+      artista TEXT,
+      artwork TEXT,
       creado INTEGER
     );
 
@@ -132,25 +161,28 @@ function vacia(tabla) {
 }
 
 function sembrar() {
-  // Usuario administrador por defecto.
+  // Usuario administrador por defecto (configurable por entorno).
   if (vacia("usuarios")) {
+    const adminUser = process.env.ADMIN_USER || "admin";
+    const adminPass = process.env.ADMIN_PASSWORD || "admin123";
     db.prepare(
       `INSERT INTO usuarios (usuario, nombre, rol, plan, clave_hash)
        VALUES (?, ?, ?, ?, ?)`
-    ).run("admin", "Administrador", "Administrador", "Profesional", bcrypt.hashSync("admin123", 10));
+    ).run(adminUser, "Administrador", "Administrador", "Profesional", bcrypt.hashSync(adminPass, 10));
   }
 
   if (vacia("estaciones")) {
     const ins = db.prepare(`
       INSERT INTO estaciones
-        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato,
+        (id, nombre, estado, servidor, montaje, host, puerto, bitrate, formato, stream_url, embed_token, embed_canal,
          oyentes_actuales, oyentes_maximos, pico_oyentes, cancion_actual, autodj, uptime)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `);
     const filas = [
-      ["rock-fm", "Rock FM Online", "online", "Icecast 2.4.4", "/rockfm", "stream.panelradio.online", 8000, 128, "MP3", 142, 250, 198, "Queen - Bohemian Rhapsody", 1, "5d 12h 34m"],
-      ["latino-mix", "Latino Mix", "online", "Icecast 2.4.4", "/latinomix", "stream.panelradio.online", 8010, 192, "AAC", 87, 150, 121, "Bad Bunny - Tití Me Preguntó", 1, "2d 03h 11m"],
-      ["jazz-lounge", "Jazz Lounge", "offline", "Icecast 2.4.4", "/jazz", "stream.panelradio.online", 8020, 128, "MP3", 0, 100, 64, "—", 0, "—"],
+      ["eternal-beat", "Eternal Beat", "online", "Caster.fm (Icecast 2.5)", "/D6md9", "sapircast.caster.fm", 13721, 96, "MP3", "https://sapircast.caster.fm:13721/D6md9", "54a0c09f-f333-4ef2-b6d4-342e9c5e744c", "a224c145-3acb-4070-a588-9f0d2b554247", 0, 400, 0, "—", 1, "0d 0h 1m"],
+      ["rock-fm", "Rock FM Online", "online", "Icecast 2.4.4", "/rockfm", "stream.panelradio.online", 8000, 128, "MP3", null, null, null, 142, 250, 198, "Queen - Bohemian Rhapsody", 1, "5d 12h 34m"],
+      ["latino-mix", "Latino Mix", "online", "Icecast 2.4.4", "/latinomix", "stream.panelradio.online", 8010, 192, "AAC", null, null, null, 87, 150, 121, "Bad Bunny - Tití Me Preguntó", 1, "2d 03h 11m"],
+      ["jazz-lounge", "Jazz Lounge", "offline", "Icecast 2.4.4", "/jazz", "stream.panelradio.online", 8020, 128, "MP3", null, null, null, 0, 100, 64, "—", 0, "—"],
     ];
     for (const f of filas) ins.run(...f);
   }
@@ -207,6 +239,72 @@ function sembrar() {
 }
 
 crearEsquema();
+// Migración: agrega la columna 'slot' a samples si la BD es de una versión anterior.
+try {
+  db.exec("ALTER TABLE samples ADD COLUMN slot INTEGER DEFAULT 0");
+} catch {
+  /* la columna ya existe */
+}
+// Migración: vincula la programación a una playlist real (playlist_id).
+try {
+  db.exec("ALTER TABLE programacion ADD COLUMN playlist_id INTEGER");
+} catch {
+  /* la columna ya existe */
+}
+// Migración: URL pública del stream por estación.
+try {
+  db.exec("ALTER TABLE estaciones ADD COLUMN stream_url TEXT");
+} catch {
+  /* la columna ya existe */
+}
+// Migración: reproductor embebible (Caster.fm): token público y canal.
+try {
+  db.exec("ALTER TABLE estaciones ADD COLUMN embed_token TEXT");
+} catch {
+  /* la columna ya existe */
+}
+try {
+  db.exec("ALTER TABLE estaciones ADD COLUMN embed_canal TEXT");
+} catch {
+  /* la columna ya existe */
+}
 sembrar();
+
+// Tras sembrar: enlaza bloques de programación existentes con su playlist por nombre.
+try {
+  db.exec(`
+    UPDATE programacion
+    SET playlist_id = (SELECT id FROM playlists WHERE playlists.nombre = programacion.playlist)
+    WHERE playlist_id IS NULL
+      AND EXISTS (SELECT 1 FROM playlists WHERE playlists.nombre = programacion.playlist);
+  `);
+} catch {
+  /* sin cambios */
+}
+
+// Garantiza que exista una playlist por nombre y devuelve su id (idempotente).
+function asegurarPlaylist(nombre, tipo) {
+  const fila = db.prepare("SELECT id FROM playlists WHERE nombre = ?").get(nombre);
+  if (fila) return fila.id;
+  const info = db
+    .prepare("INSERT INTO playlists (nombre, tipo, pistas, activa, peso) VALUES (?,?,0,1,0)")
+    .run(nombre, tipo);
+  return info.lastInsertRowid;
+}
+
+// Playlists dedicadas a cuñas (jingles y publicidad) + reglas de inserción 24/7.
+try {
+  const idJingles = asegurarPlaylist("Jingles", "Jingle");
+  const idPublicidad = asegurarPlaylist("Publicidad / Avisos", "Publicidad");
+  if (vacia("inserciones")) {
+    const ins = db.prepare(
+      "INSERT INTO inserciones (nombre, tipo, playlist_id, cada_min, activa) VALUES (?,?,?,?,?)"
+    );
+    ins.run("Jingles e IDs", "jingle", idJingles, 30, 1);
+    ins.run("Avisos Publicitarios", "publicidad", idPublicidad, 60, 1);
+  }
+} catch {
+  /* sin cambios */
+}
 
 export default db;

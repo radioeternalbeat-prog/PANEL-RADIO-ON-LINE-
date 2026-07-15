@@ -65,6 +65,8 @@ export const api = {
   login: (usuario, clave) =>
     request("/auth/login", { metodo: "POST", cuerpo: { usuario, clave }, auth: false }),
   perfil: () => request("/auth/perfil"),
+  cambiarClave: (actual, nueva) =>
+    request("/auth/cambiar-clave", { metodo: "POST", cuerpo: { actual, nueva } }),
 
   // Estaciones
   estaciones: () => request("/estaciones"),
@@ -86,7 +88,21 @@ export const api = {
     request(`/autodj/biblioteca${busqueda ? `?busqueda=${encodeURIComponent(busqueda)}` : ""}`),
   eliminarPista: (id) => request(`/autodj/biblioteca/${id}`, { metodo: "DELETE" }),
   playlists: () => request("/autodj/playlists"),
+  crearPlaylist: (datos) => request("/autodj/playlists", { metodo: "POST", cuerpo: datos }),
+  eliminarPlaylist: (id) => request(`/autodj/playlists/${id}`, { metodo: "DELETE" }),
+  pistasDePlaylist: (id) => request(`/autodj/playlists/${id}/pistas`),
+  agregarPistaPlaylist: (id, pistaId) =>
+    request(`/autodj/playlists/${id}/pistas`, { metodo: "POST", cuerpo: { pistaId } }),
+  quitarPistaPlaylist: (id, pistaId) =>
+    request(`/autodj/playlists/${id}/pistas/${pistaId}`, { metodo: "DELETE" }),
   programacion: () => request("/autodj/programacion"),
+  crearPrograma: (datos) => request("/autodj/programacion", { metodo: "POST", cuerpo: datos }),
+  actualizarPrograma: (id, datos) =>
+    request(`/autodj/programacion/${id}`, { metodo: "PUT", cuerpo: datos }),
+  eliminarPrograma: (id) => request(`/autodj/programacion/${id}`, { metodo: "DELETE" }),
+  inserciones: () => request("/autodj/inserciones"),
+  actualizarInsercion: (id, datos) =>
+    request(`/autodj/inserciones/${id}`, { metodo: "PUT", cuerpo: datos }),
 
   // iTunes
   buscarItunes: (termino, limite = 25) =>
@@ -112,15 +128,29 @@ export const api = {
   actualizarMidiMapeo: (id, datos) => request(`/midi/mapeos/${id}`, { metodo: "PUT", cuerpo: datos }),
   activarMidiMapeo: (id) => request(`/midi/mapeos/${id}/activar`, { metodo: "POST" }),
   eliminarMidiMapeo: (id) => request(`/midi/mapeos/${id}`, { metodo: "DELETE" }),
+
+  // Respaldo (copia de seguridad de toda la base de datos)
+  exportarBackup: () => request("/backup/exportar"),
+  importarBackup: (datos) => request("/backup/importar", { metodo: "POST", cuerpo: datos }),
+
+  // Página pública de radio (sin autenticación)
+  radioPublica: () => request("/publico/radio", { auth: false }),
+  historialPublico: () => request("/publico/historial", { auth: false }),
+  crearPeticion: (datos) =>
+    request("/publico/peticion", { metodo: "POST", cuerpo: datos, auth: false }),
+
+  // Reporte de "ahora suena" desde el panel (requiere sesión)
+  reportarAhoraSuena: (datos) => request("/ahora-suena", { metodo: "POST", cuerpo: datos }),
 };
 
 // Sube un sample (audio) vía multipart/form-data.
-export async function subirSample({ archivo, nombre, categoria, color }) {
+export async function subirSample({ archivo, nombre, categoria, color, slot }) {
   const fd = new FormData();
   fd.append("archivo", archivo);
   if (nombre) fd.append("nombre", nombre);
   if (categoria) fd.append("categoria", categoria);
   if (color) fd.append("color", color);
+  if (slot != null) fd.append("slot", String(slot));
 
   const token = getToken();
   const resp = await fetch(`${API_URL}/samples`, {
@@ -130,6 +160,42 @@ export async function subirSample({ archivo, nombre, categoria, color }) {
   });
   const datos = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir el sample.");
+  return datos;
+}
+
+// Sube una canción completa a la biblioteca vía multipart/form-data.
+export async function subirCancion({ archivo, titulo, artista }) {
+  const fd = new FormData();
+  fd.append("archivo", archivo);
+  if (titulo) fd.append("titulo", titulo);
+  if (artista) fd.append("artista", artista);
+
+  const token = getToken();
+  const resp = await fetch(`${API_URL}/autodj/subir`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir la canción.");
+  return datos;
+}
+
+// Sube una canción directamente a una playlist (la guarda en biblioteca y la enlaza).
+export async function subirAPlaylist({ id, archivo, titulo, artista }) {
+  const fd = new FormData();
+  fd.append("archivo", archivo);
+  if (titulo) fd.append("titulo", titulo);
+  if (artista) fd.append("artista", artista);
+
+  const token = getToken();
+  const resp = await fetch(`${API_URL}/autodj/playlists/${id}/subir`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(datos.mensaje || "No se pudo subir la canción a la playlist.");
   return datos;
 }
 

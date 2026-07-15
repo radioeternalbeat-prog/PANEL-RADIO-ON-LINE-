@@ -1,0 +1,70 @@
+# Stack completo de Eternal Beat Medios:
+#   panel      -> frontend + API + WebSocket
+#   icecast    -> servidor de streaming (oyentes)
+#   liquidsoap -> AutoDJ + entrada de DJ en vivo, emite a Icecast
+#
+# Uso:
+#   docker compose up --build
+#   - Panel:   http://localhost:4000   (admin / admin123)
+#   - Stream:  http://localhost:8000/stream
+#   - Icecast admin: http://localhost:8000  (admin / admin)
+services:
+  panel:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - JWT_SECRET=cambia-esta-clave
+      - ADMIN_PASSWORD=admin123
+      - DB_PATH=/data/panel.db
+      - UPLOADS_DIR=/data/uploads
+      # URL pública del stream para mostrar/reproducir en el panel
+      - STREAM_URL=http://localhost:8000/stream
+    volumes:
+      - paneldata:/data
+    depends_on:
+      - icecast
+    restart: unless-stopped
+
+  icecast:
+    build: ./streaming/icecast
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  liquidsoap:
+    image: savonet/liquidsoap:v2.2.5
+    depends_on:
+      - icecast
+    volumes:
+      - ./streaming/liquidsoap/radio.liq:/radio.liq:ro
+      - ./media:/media
+    command: ["liquidsoap", "/radio.liq"]
+    ports:
+      - "8005:8005" # harbor para DJ en vivo
+      - "1234:1234" # consola de control (telnet)
+    restart: unless-stopped
+
+  # Emite directamente a Caster.fm (no necesita el icecast local).
+  # Arrancar solo este servicio:
+  #   CASTER_PASSWORD="tu_clave" docker compose up liquidsoap-caster
+  liquidsoap-caster:
+    image: savonet/liquidsoap:v2.2.5
+    profiles: ["caster"]
+    volumes:
+      - ./streaming/liquidsoap/radio-caster.liq:/radio.liq:ro
+      - ./media:/media
+    environment:
+      - CASTER_HOST=sapircast.caster.fm
+      - CASTER_PORT=13721
+      - CASTER_MOUNT=/D6md9
+      - CASTER_USER=source
+      - CASTER_BITRATE=96
+      - CASTER_PASSWORD=${CASTER_PASSWORD}
+    command: ["liquidsoap", "/radio.liq"]
+    ports:
+      - "8006:8005" # harbor para DJ en vivo
+    restart: unless-stopped
+
+volumes:
+  paneldata:

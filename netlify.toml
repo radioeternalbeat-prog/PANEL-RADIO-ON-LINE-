@@ -23,7 +23,18 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# Enrutado del SPA: cualquier ruta se resuelve con index.html (React Router).
+# Proxy de la API hacia el backend (Render). IMPORTANTE: debe ir ANTES del
+# catch-all de abajo, porque Netlify aplica los redirects en el orden en que
+# aparecen en este archivo (si el catch-all fuera primero, interceptaría
+# también las llamadas a /api/* y nunca llegarían al backend).
+# Ajusta la URL si tu backend en Render tiene otro nombre de servicio.
+[[redirects]]
+  from = "/api/*"
+  to = "https://panel-radio-online.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Enrutado del SPA: cualquier otra ruta se resuelve con index.html (React Router).
 [[redirects]]
   from = "/*"
   to = "/index.html"

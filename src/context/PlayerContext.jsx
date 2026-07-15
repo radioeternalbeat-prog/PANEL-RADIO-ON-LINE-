@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { reportarNivel } from "../audio/nivelBus";
+import { urlRecurso } from "../api/client";
 
 const PlayerContext = createContext(null);
 
@@ -104,7 +105,7 @@ export function PlayerProvider({ children }) {
       titulo: pista.titulo,
       subtitulo: pista.artista,
       artwork: pista.artwork || null,
-      url: pista.previewUrl || null,
+      url: pista.previewUrl ? urlRecurso(pista.previewUrl) : null,
     };
   }
 
@@ -202,6 +203,21 @@ export function PlayerProvider({ children }) {
     setCola((c) => [...c, pista]);
   }
 
+  // Insertar una pista justo DESPUÉS de la que suena (para cuñas: jingles/publicidad).
+  // Si no hay nada reproduciéndose, la reproduce de inmediato.
+  function insertarSiguiente(pista) {
+    const c = colaRef.current;
+    const i = indiceRef.current;
+    if (!c.length || i < 0) {
+      reproducirPista(pista);
+      return;
+    }
+    const nueva = [...c];
+    nueva.splice(i + 1, 0, pista);
+    setCola(nueva);
+    colaRef.current = nueva;
+  }
+
   function quitarDeCola(indice) {
     setCola((c) => c.filter((_, i) => i !== indice));
     setIndiceCola((i) => (indice < i ? i - 1 : i));
@@ -262,6 +278,7 @@ export function PlayerProvider({ children }) {
       reproducirLista,
       reproducirIndice,
       encolar,
+      insertarSiguiente,
       quitarDeCola,
       siguiente,
       anterior,

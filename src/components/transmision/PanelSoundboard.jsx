@@ -1,30 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Music3, Piano, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
+import { AudioLines, Loader2, Music3, Pause, Piano, Play, Plus, Trash2, Zap } from "lucide-react";
 import { api, subirSample, urlRecurso } from "../../api/client";
 import { useMidi, useMidiTarget, useMidiEtiqueta, useMidiFeedback } from "../../context/MidiContext";
 
 const PADS_MIDI = 9;
 
-const CATEGORIAS = [
-  { id: "jingle", label: "Jingle", Icon: Music3 },
-  { id: "efecto", label: "Efecto", Icon: Zap },
-  { id: "voz", label: "Voz", Icon: Mic },
-];
+const SLOTS = 6;
 
-const COLOR_CAT = {
-  jingle: "from-brand-500 to-brand-700",
-  efecto: "from-amber-500 to-orange-600",
-  voz: "from-cyan-500 to-sky-600",
-};
+const CATEGORIAS = [
+  { id: "jingle", label: "Jingles", Icon: Music3, grad: "from-brand-500 to-brand-700" },
+  { id: "efecto", label: "Efectos", Icon: Zap, grad: "from-amber-500 to-orange-600" },
+  { id: "voz", label: "Samples", Icon: AudioLines, grad: "from-cyan-500 to-sky-600" },
+];
 
 export default function PanelSoundboard() {
   const [samples, setSamples] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [subiendo, setSubiendo] = useState(false);
-  const [categoria, setCategoria] = useState("jingle");
-  const [sonando, setSonando] = useState(null);
+  const [subiendo, setSubiendo] = useState(null); // `${cat}-${slot}`
+  const [sonando, setSonando] = useState(null); // id del sample
   const inputFile = useRef(null);
-  const audios = useRef({}); // id -> HTMLAudioElement
+  const pendienteRef = useRef(null); // { categoria, slot }
+  const audios = useRef({}); // id -> Audio
   const { mapeoActual } = useMidi();
 
   async function cargar() {
@@ -39,24 +35,33 @@ export default function PanelSoundboard() {
 
   useEffect(() => {
     cargar();
-    return () => {
-      Object.values(audios.current).forEach((a) => a.pause());
-    };
+    return () => Object.values(audios.current).forEach((a) => a.pause());
   }, []);
+
+  function buscarSample(categoria, slot) {
+    return samples.find((s) => s.categoria === categoria && (s.slot ?? 0) === slot);
+  }
+
+  function pedirArchivo(categoria, slot) {
+    pendienteRef.current = { categoria, slot };
+    inputFile.current?.click();
+  }
 
   async function onArchivo(e) {
     const archivo = e.target.files?.[0];
     e.target.value = "";
-    if (!archivo) return;
-    setSubiendo(true);
+    const dest = pendienteRef.current;
+    if (!archivo || !dest) return;
+    const clave = `${dest.categoria}-${dest.slot}`;
+    setSubiendo(clave);
     try {
       const nombre = archivo.name.replace(/\.[^.]+$/, "");
-      await subirSample({ archivo, nombre, categoria });
+      await subirSample({ archivo, nombre, categoria: dest.categoria, slot: dest.slot });
       await cargar();
     } catch (err) {
       alert(err.message || "No se pudo subir el audio.");
     } finally {
-      setSubiendo(false);
+      setSubiendo(null);
     }
   }
 
@@ -124,92 +129,105 @@ export default function PanelSoundboard() {
   useMidiTarget("global.panico", () => detenerTodos());
 
   return (
-    <div className="card flex h-full flex-col p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-muted">
-          <Zap size={16} className="text-brand-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wide">Soundboard</h3>
+    <div className="card p-5">
+      <div className="mb-4 flex items-center gap-2 text-muted">
+        <Zap size={16} className="text-brand-500" />
+        <h3 className="text-sm font-semibold uppercase tracking-wide">Soundboard</h3>
+      </div>
+
+      <input ref={inputFile} type="file" accept="audio/*" className="hidden" onChange={onArchivo} />
+
+      {cargando ? (
+        <div className="flex h-24 items-center justify-center">
+          <Loader2 className="animate-spin text-brand-500" size={22} />
         </div>
-        <input ref={inputFile} type="file" accept="audio/*" className="hidden" onChange={onArchivo} />
-        <button
-          onClick={() => inputFile.current?.click()}
-          className="btn-primary px-3 py-1.5 text-xs"
-          disabled={subiendo}
-        >
-          {subiendo ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          Subir
-        </button>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {CATEGORIAS.map((cat) => (
+            <div key={cat.id}>
+              <div className="mb-2 flex items-center gap-2">
+                <cat.Icon size={14} className="text-brand-500" />
+                <h4 className="text-xs font-bold uppercase tracking-wide text-fg">{cat.label}</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3">
+                {Array.from({ length: SLOTS }).map((_, slot) => {
+                  const s = buscarSample(cat.id, slot);
+                  const clave = `${cat.id}-${slot}`;
+                  const cargandoCaja = subiendo === clave;
+                  const activo = s && sonando === s.id;
 
-      {/* Selector de categoría para la próxima subida */}
-      <div className="mb-3 flex gap-1">
-        {CATEGORIAS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setCategoria(id)}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition ${
-              categoria === id ? "bg-brand-600 text-white" : "bg-surface2 text-muted hover:text-fg"
-            }`}
-          >
-            <Icon size={13} /> {label}
-          </button>
-        ))}
-      </div>
+                  if (cargandoCaja) {
+                    return (
+                      <div key={slot} className="flex aspect-square items-center justify-center rounded-xl border border-line bg-surface2">
+                        <Loader2 size={18} className="animate-spin text-brand-500" />
+                      </div>
+                    );
+                  }
 
-      {/* Grilla de pads */}
-      <div className="flex-1 overflow-y-auto">
-        {cargando ? (
-          <div className="flex h-24 items-center justify-center">
-            <Loader2 className="animate-spin text-brand-500" size={22} />
-          </div>
-        ) : samples.length === 0 ? (
-          <div className="flex h-32 flex-col items-center justify-center gap-2 text-center text-muted">
-            <Plus size={28} />
-            <p className="text-sm">Sube jingles, efectos o voces para dispararlos al aire.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {samples.map((s, i) => {
-              const activo = sonando === s.id;
-              const controlId = i < PADS_MIDI ? `soundboard.pad${i + 1}` : null;
-              const tieneMidi = controlId && mapeoActual.some((a) => a.controlId === controlId);
-              return (
-                <div key={s.id} className="group relative">
-                  <button
-                    onClick={() => (activo ? detener(s) : disparar(s))}
-                    className={`flex h-20 w-full flex-col items-center justify-center gap-1 rounded-xl bg-gradient-to-br ${
-                      COLOR_CAT[s.categoria] || COLOR_CAT.efecto
-                    } p-2 text-white shadow-sm transition active:scale-95 ${
-                      activo ? "ring-2 ring-white/70" : ""
-                    }`}
-                    title={s.nombre}
-                  >
-                    <Play size={18} className={activo ? "animate-pulse" : ""} />
-                    <span className="line-clamp-2 text-center text-[11px] font-semibold leading-tight">
-                      {s.nombre}
-                    </span>
-                  </button>
-                  {tieneMidi && (
-                    <span
-                      className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow"
-                      title="Mapeado a tu controlador MIDI"
-                    >
-                      <Piano size={11} />
-                    </span>
-                  )}
-                  <button
-                    onClick={() => eliminar(s)}
-                    className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                  if (!s) {
+                    // Caja vacía: cargar un sonido
+                    return (
+                      <button
+                        key={slot}
+                        onClick={() => pedirArchivo(cat.id, slot)}
+                        className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line bg-surface2 text-muted transition hover:border-brand-500/60 hover:text-brand-500"
+                        title="Cargar sonido"
+                      >
+                        <Plus size={18} />
+                        <span className="text-[9px]">Cargar</span>
+                      </button>
+                    );
+                  }
+
+                  // Caja con sonido. Los primeros PADS_MIDI samples (por
+                  // orden de llegada del backend) responden a un pad físico
+                  // MIDI ("soundboard.pad1".."pad9"); se marca con un icono
+                  // cuál caja está mapeada actualmente.
+                  const indicePad = samples.findIndex((x) => x.id === s.id);
+                  const controlId = indicePad >= 0 && indicePad < PADS_MIDI ? `soundboard.pad${indicePad + 1}` : null;
+                  const tieneMidi = controlId && mapeoActual.some((a) => a.controlId === controlId);
+                  return (
+                    <div key={slot} className="group relative">
+                      <button
+                        onClick={() => (activo ? detener(s) : disparar(s))}
+                        className={`flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl bg-gradient-to-br ${cat.grad} p-1 text-white shadow-sm transition active:scale-95 ${
+                          activo ? "ring-2 ring-white/70" : ""
+                        }`}
+                        title={s.nombre}
+                      >
+                        {activo ? <Pause size={16} /> : <Play size={16} />}
+                        <span className="line-clamp-2 px-0.5 text-center text-[9px] font-semibold leading-tight">
+                          {s.nombre}
+                        </span>
+                      </button>
+                      {tieneMidi && (
+                        <span
+                          className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow"
+                          title="Mapeado a tu controlador MIDI"
+                        >
+                          <Piano size={11} />
+                        </span>
+                      )}
+                      <button
+                        onClick={() => eliminar(s)}
+                        className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"
+                        title="Vaciar caja"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px] text-muted">
+        6 cajas por categoría. Pulsa <span className="font-semibold text-fg">+ Cargar</span> en una caja
+        vacía para asignarle un sonido independiente; tócala para dispararlo al aire.
+      </p>
     </div>
   );
 }

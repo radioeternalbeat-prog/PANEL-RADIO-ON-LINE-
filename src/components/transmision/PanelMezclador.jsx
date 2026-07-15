@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Disc3,
-  Mic,
-  MicOff,
   Pause,
   Play,
   Repeat,
@@ -12,6 +10,7 @@ import {
 } from "lucide-react";
 import { api } from "../../api/client";
 import { reportarNivel } from "../../audio/nivelBus";
+import { urlRecurso } from "../../api/client";
 import { useMezclador } from "../../context/MezcladorContext";
 import { useMidiTarget, useMidiEtiqueta } from "../../context/MidiContext";
 
@@ -70,15 +69,11 @@ export default function PanelMezclador() {
   const [cross, setCross] = useState(0.5);
   const [master, setMaster] = useState(0.9);
   const [listo, setListo] = useState(false);
-  const [micActivo, setMicActivo] = useState(false);
-  const [dispositivos, setDispositivos] = useState([]);
-  const [micDeviceId, setMicDeviceId] = useState("");
   const masterAntesDeMuteRef = useRef(0.9);
 
   const grafoRef = useRef(null);
   const medAref = useRef(null);
   const medBref = useRef(null);
-  const micLevelRef = useRef(null);
   const tapsRef = useRef({ A: [], B: [] });
   // Espejo del estado de cada deck para usarlo dentro del rAF (loops).
   const estadoRef = useRef({ A: deckA, B: deckB });
@@ -87,7 +82,7 @@ export default function PanelMezclador() {
   const setters = { A: setDeckA, B: setDeckB };
 
   // Permite que otros paneles (ej. Cola) carguen pistas en los decks.
-  const { registrarCargador, registrarPreparador, cue: cueMonitor, monitorVol, mezcla, salidaId } = useMezclador();
+  const { registrarCargador, registrarPreparador, registrarNodos, cue: cueMonitor, monitorVol, mezcla, salidaId } = useMezclador();
   const cargarRef = useRef(null);
   useEffect(() => {
     registrarCargador((id, pista) => cargarRef.current?.(id, pista));
@@ -102,6 +97,15 @@ export default function PanelMezclador() {
       if (g.ctx.state === "suspended") g.ctx.resume();
     });
   }, [registrarPreparador]);
+
+  // Exponer los nodos de audio (ctx, masterGain, duckGain) al Panel de Micrófonos.
+  useEffect(() => {
+    registrarNodos(() => {
+      const g = asegurarGrafo();
+      if (g.ctx.state === "suspended") g.ctx.resume();
+      return g;
+    });
+  }, [registrarNodos]);
 
   // Aplicar estado del monitor (CUE A/B) a los nodos.
   useEffect(() => {
@@ -136,23 +140,6 @@ export default function PanelMezclador() {
       .biblioteca()
       .then(setBiblioteca)
       .catch(() => {});
-  }, []);
-
-  // Detecta los micrófonos conectados al sistema.
-  async function refrescarDispositivos() {
-    try {
-      const lista = await navigator.mediaDevices.enumerateDevices();
-      setDispositivos(lista.filter((d) => d.kind === "audioinput"));
-    } catch {
-      /* noop */
-    }
-  }
-
-  useEffect(() => {
-    refrescarDispositivos();
-    navigator.mediaDevices?.addEventListener?.("devicechange", refrescarDispositivos);
-    return () =>
-      navigator.mediaDevices?.removeEventListener?.("devicechange", refrescarDispositivos);
   }, []);
 
   function asegurarGrafo() {
@@ -238,8 +225,6 @@ export default function PanelMezclador() {
       monitorAudio,
       A: crearDeck(),
       B: crearDeck(),
-      mic: null,
-      micAnalyser: null,
     };
     setListo(true);
     return grafoRef.current;
@@ -279,7 +264,9 @@ export default function PanelMezclador() {
   useMidiTarget("mezclador.crossfaderCentro", () => setCross(0.5));
   useMidiTarget("mezclador.master", (v) => setMaster(v));
   useMidiTarget("mezclador.masterMute", () => alternarMuteMaster());
-  useMidiTarget("mezclador.mic", () => toggleMic());
+  // Nota: el control MIDI "mezclador.mic" vive en PanelMicrofonos.jsx (el
+  // micrófono único de esta versión pasó a ser un panel de 4 entradas con
+  // mute global independiente).
   // "Pánico" global: para (y calla) ambos decks al instante desde cualquier
   // pantalla, y también libera el mute del master si estaba activo.
   useMidiTarget("global.panico", () => {
@@ -291,7 +278,6 @@ export default function PanelMezclador() {
   useEffect(() => {
     let raf;
     const buf = new Uint8Array(128);
-    const micBuf = new Uint8Array(256);
     function rms(analyser, b) {
       analyser.getByteTimeDomainData(b);
       let s = 0;
@@ -312,14 +298,6 @@ export default function PanelMezclador() {
           if (est.loop.activo && g[id].audio.currentTime >= est.loop.fin) {
             g[id].audio.currentTime = est.loop.inicio;
           }
-        }
-        // Ducking
-        if (g.micAnalyser) {
-          const nivelMic = rms(g.micAnalyser, micBuf);
-          const objetivo = nivelMic > 0.04 ? 0.25 : 1; // habla -> baja música
-          g.duckGain.gain.setTargetAtTime(objetivo, g.ctx.currentTime, 0.08);
-          if (micLevelRef.current)
-            micLevelRef.current.style.width = `${Math.min(100, nivelMic * 260)}%`;
         }
         // Nivel master -> bus compartido (para el cartel ON AIR)
         if (g.masterAnalyser) reportarNivel("mixer", rms(g.masterAnalyser, buf));
@@ -362,13 +340,14 @@ export default function PanelMezclador() {
     const pista = await resolverPreview(pistaOriginal);
     if (!pista.previewUrl) return; // no se encontró audio reproducible
 
-    d.audio.src = pista.previewUrl;
+    const urlAudio = urlRecurso(pista.previewUrl);
+    d.audio.src = urlAudio;
     d.audio.load();
     setters[id]((s) => ({ ...s, track: pista }));
 
     // Forma de onda (decodificar audio).
     try {
-      const resp = await fetch(pista.previewUrl);
+      const resp = await fetch(urlAudio);
       const arr = await resp.arrayBuffer();
       const audioBuf = await g.ctx.decodeAudioData(arr);
       const datos = audioBuf.getChannelData(0);
@@ -495,60 +474,6 @@ export default function PanelMezclador() {
     setters[id]((s) => ({ ...s, loop: { ...s.loop, activo: false, beats: 0 } }));
   }
 
-  // --- Micrófono / ducking ---
-  async function iniciarMic(deviceId) {
-    const g = asegurarGrafo();
-    if (g.ctx.state === "suspended") await g.ctx.resume();
-    // Cerrar stream anterior si lo hay.
-    if (g.mic) {
-      g.mic.mediaStream?.getTracks().forEach((t) => t.stop());
-      try { g.mic.disconnect(); } catch { /* noop */ }
-      g.mic = null;
-      g.micAnalyser = null;
-    }
-    const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const micSource = g.ctx.createMediaStreamSource(stream);
-    const an = g.ctx.createAnalyser();
-    an.fftSize = 512;
-    micSource.connect(an); // solo análisis (no a la salida, evita feedback)
-    g.mic = micSource;
-    g.micAnalyser = an;
-    setMicActivo(true);
-    refrescarDispositivos(); // ahora con etiquetas (ya hay permiso)
-  }
-
-  function detenerMic() {
-    const g = grafoRef.current;
-    if (g) {
-      g.mic?.mediaStream?.getTracks().forEach((t) => t.stop());
-      g.mic = null;
-      g.micAnalyser = null;
-      g.duckGain.gain.setTargetAtTime(1, g.ctx.currentTime, 0.1);
-    }
-    if (micLevelRef.current) micLevelRef.current.style.width = "0%";
-    setMicActivo(false);
-  }
-
-  async function toggleMic() {
-    if (micActivo) {
-      detenerMic();
-    } else {
-      try {
-        await iniciarMic(micDeviceId);
-      } catch {
-        alert("No se pudo acceder al micrófono.");
-      }
-    }
-  }
-
-  async function cambiarMicro(id) {
-    setMicDeviceId(id);
-    if (micActivo) {
-      try { await iniciarMic(id); } catch { /* noop */ }
-    }
-  }
-
   return (
     <div className="card p-5">
       <div className="mb-4 flex items-center gap-2 text-muted">
@@ -565,45 +490,6 @@ export default function PanelMezclador() {
 
         {/* Centro */}
         <div className="flex flex-row items-center justify-center gap-6 lg:flex-col lg:px-2">
-          {/* Micrófono (ducking) */}
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={toggleMic}
-              className={`relative flex h-16 w-16 items-center justify-center rounded-full border-2 transition ${
-                micActivo
-                  ? "border-red-500 bg-red-500/15 text-red-500"
-                  : "border-line bg-surface2 text-muted hover:border-brand-500/50 hover:text-fg"
-              }`}
-              title={micActivo ? "Apagar micrófono" : "Encender micrófono (ducking al hablar)"}
-            >
-              {micActivo && (
-                <span className="absolute inset-0 animate-ping rounded-full bg-red-500/20" />
-              )}
-              {micActivo ? <Mic size={26} /> : <MicOff size={26} />}
-            </button>
-            <span className="text-[11px] font-semibold uppercase text-muted">Micrófono</span>
-            {/* Nivel de voz */}
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line">
-              <div ref={micLevelRef} className="h-full rounded-full bg-red-500 transition-[width] duration-75" style={{ width: "0%" }} />
-            </div>
-            {/* Selector de micrófono */}
-            <select
-              value={micDeviceId}
-              onChange={(e) => cambiarMicro(e.target.value)}
-              className="input max-w-[160px] py-1 text-xs"
-              title="Elegir micrófono"
-            >
-              <option value="">Micrófono predeterminado</option>
-              {dispositivos.map((d, i) => (
-                <option key={d.deviceId || i} value={d.deviceId}>
-                  {d.label || `Micrófono ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hidden h-px w-full bg-line lg:block" />
-
           <div className="flex flex-col items-center gap-2">
             <span className="text-[11px] font-semibold uppercase text-muted">Master</span>
             <input type="range" min="0" max="1" step="0.01" value={master}
@@ -770,7 +656,7 @@ function Deck({
       </div>
 
       {/* BPM + tap + sync */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg bg-surface px-2 py-1">
           <input type="number" min="40" max="250" value={estado.bpm}
             onChange={(e) => set("bpm")(Number(e.target.value) || 0)}
@@ -810,7 +696,7 @@ function Deck({
       </div>
 
       {/* Loops por beats */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <Repeat size={14} className="text-muted" />
         {[1, 2, 4].map((b) => (
           <button key={b} onClick={() => onLoop(id, b)}

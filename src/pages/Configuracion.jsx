@@ -1,5 +1,17 @@
-import { useState } from "react";
-import { Copy, Save, Server, Sliders, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  Copy,
+  DatabaseBackup,
+  Download,
+  KeyRound,
+  Loader2,
+  Save,
+  Server,
+  Sliders,
+  Upload,
+  Users,
+} from "lucide-react";
+import { api } from "../api/client";
 import { bitratesSoportados, estaciones, formatosSoportados } from "../data/mockData";
 import PanelMidiMapping from "../components/configuracion/PanelMidiMapping";
 
@@ -28,6 +40,93 @@ export default function Configuracion() {
     descripcion: "La mejor música 24/7",
   });
   const [guardado, setGuardado] = useState(false);
+
+  // Cambio de contraseña del panel.
+  const [pwd, setPwd] = useState({ actual: "", nueva: "", confirmar: "" });
+  const [pwdMsg, setPwdMsg] = useState(null);
+  const [pwdCargando, setPwdCargando] = useState(false);
+
+  // Respaldo (copia de seguridad).
+  const [bkMsg, setBkMsg] = useState(null);
+  const [exportando, setExportando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const inputBackup = useRef(null);
+
+  async function exportarBackup() {
+    setBkMsg(null);
+    setExportando(true);
+    try {
+      const datos = await api.exportarBackup();
+      const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `eternal-beat-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setBkMsg({
+        tipo: "ok",
+        texto: `Copia descargada (${datos.totalRegistros} registros). Guárdala en un lugar seguro.`,
+      });
+    } catch (err) {
+      setBkMsg({ tipo: "error", texto: err.message || "No se pudo exportar." });
+    } finally {
+      setExportando(false);
+    }
+  }
+
+  function onArchivoBackup(ev) {
+    const archivo = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = async () => {
+      let datos;
+      try {
+        datos = JSON.parse(lector.result);
+      } catch {
+        setBkMsg({ tipo: "error", texto: "El archivo no es una copia válida (JSON inválido)." });
+        return;
+      }
+      if (
+        !confirm(
+          "Esto REEMPLAZARÁ todos los datos actuales (estaciones, playlists, programación, etc.) por los de la copia. ¿Continuar?"
+        )
+      )
+        return;
+      setImportando(true);
+      setBkMsg(null);
+      try {
+        const r = await api.importarBackup(datos);
+        setBkMsg({ tipo: "ok", texto: r.mensaje });
+      } catch (err) {
+        setBkMsg({ tipo: "error", texto: err.message || "No se pudo restaurar." });
+      } finally {
+        setImportando(false);
+      }
+    };
+    lector.readAsText(archivo);
+  }
+
+  async function cambiarClave() {
+    setPwdMsg(null);
+    if (pwd.nueva !== pwd.confirmar) {
+      setPwdMsg({ tipo: "error", texto: "Las contraseñas nuevas no coinciden." });
+      return;
+    }
+    setPwdCargando(true);
+    try {
+      const r = await api.cambiarClave(pwd.actual, pwd.nueva);
+      setPwdMsg({ tipo: "ok", texto: r.mensaje });
+      setPwd({ actual: "", nueva: "", confirmar: "" });
+    } catch (err) {
+      setPwdMsg({ tipo: "error", texto: err.message });
+    } finally {
+      setPwdCargando(false);
+    }
+  }
 
   function set(campo, valor) {
     setCfg((c) => ({ ...c, [campo]: valor }));
@@ -142,7 +241,7 @@ export default function Configuracion() {
           <div className="card p-5">
             <div className="mb-3 flex items-center gap-2">
               <Users size={18} className="text-brand-500" />
-              <h2 className="font-semibold text-fg">Credenciales</h2>
+              <h2 className="font-semibold text-fg">Credenciales del stream</h2>
             </div>
             <div className="space-y-3">
               <Campo label="Usuario fuente (DJ)">
@@ -151,10 +250,111 @@ export default function Configuracion() {
               <Campo label="Contraseña fuente">
                 <input type="password" className="input" defaultValue="hackme123" />
               </Campo>
-              <Campo label="Contraseña admin">
-                <input type="password" className="input" defaultValue="admin123" />
-              </Campo>
             </div>
+          </div>
+
+          {/* Cambiar contraseña del panel (real) */}
+          <div className="card p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <KeyRound size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Contraseña del panel</h2>
+            </div>
+            <div className="space-y-3">
+              <Campo label="Contraseña actual">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.actual}
+                  onChange={(e) => setPwd((p) => ({ ...p, actual: e.target.value }))}
+                />
+              </Campo>
+              <Campo label="Nueva contraseña">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.nueva}
+                  onChange={(e) => setPwd((p) => ({ ...p, nueva: e.target.value }))}
+                />
+              </Campo>
+              <Campo label="Confirmar nueva">
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd.confirmar}
+                  onChange={(e) => setPwd((p) => ({ ...p, confirmar: e.target.value }))}
+                />
+              </Campo>
+              {pwdMsg && (
+                <p
+                  className={`rounded-lg px-3 py-2 text-sm ${
+                    pwdMsg.tipo === "ok"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-red-500/10 text-red-500"
+                  }`}
+                >
+                  {pwdMsg.texto}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={cambiarClave}
+                className="btn-primary w-full"
+                disabled={pwdCargando}
+              >
+                {pwdCargando ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                Actualizar contraseña
+              </button>
+            </div>
+          </div>
+
+          {/* Respaldo / copia de seguridad */}
+          <div className="card p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <DatabaseBackup size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Copia de seguridad</h2>
+            </div>
+            <p className="mb-3 text-xs text-muted">
+              Descarga un respaldo completo de tus datos (estaciones, playlists, programación,
+              biblioteca, mensajes y ajustes) o restaura desde un archivo.
+            </p>
+            <input
+              ref={inputBackup}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={onArchivoBackup}
+            />
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={exportarBackup}
+                className="btn-primary w-full"
+                disabled={exportando}
+              >
+                {exportando ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Exportar copia
+              </button>
+              <button
+                type="button"
+                onClick={() => inputBackup.current?.click()}
+                className="btn-ghost w-full"
+                disabled={importando}
+              >
+                {importando ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                Importar / restaurar
+              </button>
+            </div>
+            {bkMsg && (
+              <p
+                className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                  bkMsg.tipo === "ok"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-red-500/10 text-red-500"
+                }`}
+              >
+                {bkMsg.texto}
+              </p>
+            )}
           </div>
 
           <button type="submit" className="btn-primary w-full py-2.5">
