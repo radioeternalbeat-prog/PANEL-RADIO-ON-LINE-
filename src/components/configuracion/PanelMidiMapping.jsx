@@ -79,6 +79,7 @@ function Fila({ control, resaltado }) {
         {control.tipo === "absoluto" && asignacion && (
           <>
             <button
+              type="button"
               onClick={() => alternarRelativo(control.id)}
               title="Encoder relativo (sin tope, para knobs infinitos)"
               className={`flex h-8 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold transition ${
@@ -91,6 +92,7 @@ function Fila({ control, resaltado }) {
             </button>
             {asignacion.relativo && (
               <button
+                type="button"
                 onClick={() => ciclarSensibilidad(control.id)}
                 title="Sensibilidad del encoder"
                 className="flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2 text-[10px] font-bold text-muted hover:text-fg"
@@ -99,6 +101,7 @@ function Fila({ control, resaltado }) {
               </button>
             )}
             <button
+              type="button"
               onClick={() => invertirAsignacion(control.id)}
               title="Invertir rango (útil si el fader queda al revés)"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
@@ -113,6 +116,7 @@ function Fila({ control, resaltado }) {
         )}
         {asignacion && (
           <button
+            type="button"
             onClick={() => quitarAsignacion(control.id)}
             title="Quitar asignación"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-muted hover:border-red-500/50 hover:text-red-500"
@@ -122,6 +126,7 @@ function Fila({ control, resaltado }) {
         )}
         {aprendiendo ? (
           <button
+            type="button"
             onClick={cancelarAprendizaje}
             className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white"
           >
@@ -133,6 +138,7 @@ function Fila({ control, resaltado }) {
           </button>
         ) : (
           <button
+            type="button"
             onClick={() => iniciarAprendizaje(control.id)}
             className="btn-ghost px-3 py-1.5 text-xs"
           >
@@ -152,6 +158,7 @@ function Grupo({ grupo, controles, contarAsignados, resaltarId, forzarAbierto })
   return (
     <div className="rounded-xl border border-line">
       <button
+        type="button"
         onClick={() => setAbierto((a) => !a)}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
@@ -373,6 +380,7 @@ export default function PanelMidiMapping() {
             <span />
           )}
           <button
+            type="button"
             onClick={() => setMostrarMonitor((m) => !m)}
             className="text-[11px] font-semibold text-brand-500 hover:underline"
           >
@@ -403,6 +411,7 @@ export default function PanelMidiMapping() {
             <p className="text-sm font-medium text-fg">Feedback de LEDs en el controlador</p>
           </div>
           <button
+            type="button"
             onClick={alternarFeedbackHabilitado}
             className={`relative h-6 w-11 rounded-full transition ${
               feedbackHabilitado ? "bg-brand-600" : "bg-line"
@@ -451,12 +460,17 @@ export default function PanelMidiMapping() {
               className="input max-w-[220px] py-1.5 text-sm"
               value={nombreEdicion}
               onChange={(e) => setNombreEdicion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onConfirmarRenombrar()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onConfirmarRenombrar();
+                }
+              }}
             />
-            <button onClick={onConfirmarRenombrar} className="btn-primary px-3 py-1.5 text-xs">
+            <button type="button" onClick={onConfirmarRenombrar} className="btn-primary px-3 py-1.5 text-xs">
               Guardar
             </button>
-            <button onClick={() => setRenombrando(false)} className="btn-ghost px-3 py-1.5 text-xs">
+            <button type="button" onClick={() => setRenombrando(false)} className="btn-ghost px-3 py-1.5 text-xs">
               Cancelar
             </button>
           </>
@@ -477,6 +491,7 @@ export default function PanelMidiMapping() {
             </select>
             {perfilActivo && (
               <button
+                type="button"
                 onClick={onIniciarRenombrar}
                 title="Renombrar perfil"
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-muted hover:text-fg"
@@ -495,23 +510,29 @@ export default function PanelMidiMapping() {
               placeholder="Nombre del perfil (ej. Mi DDJ-400)"
               value={nombreNuevo}
               onChange={(e) => setNombreNuevo(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onCrearPerfil()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onCrearPerfil();
+                }
+              }}
             />
-            <button onClick={onCrearPerfil} className="btn-primary px-3 py-1.5 text-xs">
+            <button type="button" onClick={onCrearPerfil} className="btn-primary px-3 py-1.5 text-xs">
               Crear
             </button>
-            <button onClick={() => setCreando(false)} className="btn-ghost px-3 py-1.5 text-xs">
+            <button type="button" onClick={() => setCreando(false)} className="btn-ghost px-3 py-1.5 text-xs">
               Cancelar
             </button>
           </>
         ) : (
-          <button onClick={() => setCreando(true)} className="btn-ghost px-3 py-1.5 text-xs">
+          <button type="button" onClick={() => setCreando(true)} className="btn-ghost px-3 py-1.5 text-xs">
             <Plus size={14} /> Nuevo perfil
           </button>
         )}
 
         {perfilActivo && (
           <button
+            type="button"
             onClick={onEliminarPerfil}
             className="btn-ghost px-3 py-1.5 text-xs hover:border-red-500/50 hover:text-red-500"
           >
@@ -527,10 +548,11 @@ export default function PanelMidiMapping() {
             className="hidden"
             onChange={onImportar}
           />
-          <button onClick={() => inputArchivo.current?.click()} className="btn-ghost px-3 py-1.5 text-xs">
+          <button type="button" onClick={() => inputArchivo.current?.click()} className="btn-ghost px-3 py-1.5 text-xs">
             <Upload size={14} /> Importar
           </button>
           <button
+            type="button"
             onClick={onExportar}
             disabled={!perfilActivo}
             className="btn-ghost px-3 py-1.5 text-xs"
@@ -564,10 +586,11 @@ export default function PanelMidiMapping() {
                   tenga tu controlador.
                 </p>
               </div>
-              <button onClick={saltarAsistente} className="btn-ghost px-3 py-1.5 text-xs">
+              <button type="button" onClick={saltarAsistente} className="btn-ghost px-3 py-1.5 text-xs">
                 <SkipForward size={13} /> Saltar
               </button>
               <button
+                type="button"
                 onClick={detenerAsistente}
                 className="btn-ghost px-3 py-1.5 text-xs hover:border-red-500/50 hover:text-red-500"
               >
@@ -580,7 +603,7 @@ export default function PanelMidiMapping() {
                 <strong className="text-fg">Modo rápido:</strong> el asistente recorre todos los
                 controles pendientes uno por uno — solo mueve tu controlador en orden.
               </p>
-              <button onClick={onIniciarAsistente} className="btn-primary px-3 py-1.5 text-xs">
+              <button type="button" onClick={onIniciarAsistente} className="btn-primary px-3 py-1.5 text-xs">
                 <Sparkles size={14} /> Iniciar asistente
               </button>
             </div>
@@ -597,6 +620,7 @@ export default function PanelMidiMapping() {
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
               placeholder="Buscar un control (ej. crossfader, hotcue, pánico...)"
               className="input pl-9 text-sm"
             />
@@ -619,6 +643,7 @@ export default function PanelMidiMapping() {
           </div>
           <div className="mt-4 flex justify-end">
             <button
+              type="button"
               onClick={() => {
                 if (window.confirm("¿Quitar todas las asignaciones de este perfil?")) limpiarMapeo();
               }}

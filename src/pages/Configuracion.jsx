@@ -117,6 +117,13 @@ export default function Configuracion() {
               </label>
             </div>
           </div>
+
+          {/* Mapeo MIDI: cada usuario conecta su propio controlador y asigna
+              libremente los controles del mezclador, audifonos, reproductor
+              y soundboard. El perfil se guarda en la cuenta del usuario.
+              Todos sus botones son type="button" para no disparar el submit
+              de este formulario. */}
+          <PanelMidiMapping />
         </div>
 
         {/* Columna lateral */}
@@ -160,11 +167,6 @@ export default function Configuracion() {
           )}
         </div>
       </form>
-
-      {/* Mapeo MIDI: cada usuario conecta su propio controlador y asigna
-          libremente los controles del mezclador, audifonos, reproductor y
-          soundboard. El perfil se guarda en la cuenta del usuario. */}
-      <PanelMidiMapping />
     </div>
   );
 }
