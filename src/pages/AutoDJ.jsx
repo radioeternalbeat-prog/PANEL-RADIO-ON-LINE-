@@ -3,6 +3,7 @@ import {
   Apple,
   CalendarClock,
   Clock,
+  Disc3,
   ListMusic,
   Loader2,
   Megaphone,
@@ -42,6 +43,7 @@ function BadgeFuente({ fuente }) {
     itunes: { txt: "iTunes", cls: "bg-brand-500/15 text-brand-500" },
     xml: { txt: "Local", cls: "bg-accent-500/15 text-accent-500" },
     archivo: { txt: "Subido", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+    rekordbox: { txt: "Rekordbox", cls: "bg-orange-500/15 text-orange-500" },
     manual: { txt: "Manual", cls: "bg-surface2 text-muted" },
   };
   const s = map[fuente] || map.manual;
@@ -57,6 +59,7 @@ export default function AutoDJ() {
   const [cargando, setCargando] = useState(true);
   const [mostrarItunes, setMostrarItunes] = useState(false);
   const [importandoXml, setImportandoXml] = useState(false);
+  const [importandoRekordbox, setImportandoRekordbox] = useState(false);
   const [mostrarImportar, setMostrarImportar] = useState(false);
   const [aviso, setAviso] = useState("");
   const [playlistAbierta, setPlaylistAbierta] = useState(null);
@@ -65,6 +68,7 @@ export default function AutoDJ() {
   const [programaEditar, setProgramaEditar] = useState(null); // objeto, {} (nuevo) o null
   const [ahora, setAhora] = useState(new Date());
   const inputXml = useRef(null);
+  const inputRekordbox = useRef(null);
   const { reproducirPista, reproducirLista, encolar, medioActual, reproduciendo, alternar } = usePlayer();
   const {
     auto,
@@ -199,6 +203,30 @@ export default function AutoDJ() {
     }
   }
 
+  // Importa la colección exportada desde Rekordbox:
+  // Rekordbox > Archivo > Biblioteca > Exportar colección en formato xml.
+  async function onArchivoRekordbox(e) {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    setImportandoRekordbox(true);
+    setAviso("");
+    try {
+      const xml = await archivo.text();
+      const r = await api.importarRekordboxXml(xml);
+      setAviso(
+        r.reproducibleLocalmente
+          ? r.mensaje
+          : `${r.mensaje} Nota: para reproducir el audio real, configura REKORDBOX_MUSIC_ROOT en el servidor (por ahora solo se importaron los datos).`
+      );
+      await cargarBiblioteca();
+    } catch (err) {
+      setAviso(err.message || "No se pudo importar la colección de Rekordbox.");
+    } finally {
+      setImportandoRekordbox(false);
+    }
+  }
+
   // --- Mapeo MIDI: cambiar de pestaña y abrir el buscador de iTunes con un
   // botón físico (útil en controladores con "páginas" o "modos" dedicados).
   useMidiTarget("autodj.tabBiblioteca", () => setTab("biblioteca"));
@@ -220,17 +248,33 @@ export default function AutoDJ() {
         <div>
           <h1 className="text-2xl font-bold text-fg">AutoDJ</h1>
           <p className="text-sm text-muted">
-            Gestiona tu música con iTunes como motor: busca canciones reales o importa tu biblioteca.
+            Gestiona tu música: busca canciones en iTunes, sube archivos o importa tu colección de Rekordbox.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <input ref={inputXml} type="file" accept=".xml" className="hidden" onChange={onArchivoXml} />
+          <input
+            ref={inputRekordbox}
+            type="file"
+            accept=".xml"
+            className="hidden"
+            onChange={onArchivoRekordbox}
+          />
           <button className="btn-ghost" onClick={() => setMostrarImportar(true)}>
             <UploadCloud size={16} /> Subir música
           </button>
           <button className="btn-ghost" onClick={() => inputXml.current?.click()} disabled={importandoXml}>
             {importandoXml ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
             Importar Library.xml
+          </button>
+          <button
+            className="btn-ghost"
+            onClick={() => inputRekordbox.current?.click()}
+            disabled={importandoRekordbox}
+            title="Rekordbox > Archivo > Biblioteca > Exportar colección en formato xml"
+          >
+            {importandoRekordbox ? <Loader2 size={16} className="animate-spin" /> : <Disc3 size={16} />}
+            Importar de Rekordbox
           </button>
           <button className="btn-primary" onClick={() => setMostrarItunes(true)}>
             <Apple size={16} /> Buscar en iTunes
@@ -290,6 +334,10 @@ export default function AutoDJ() {
                 {biblioteca.map((t) => {
                   const sonando =
                     medioActual?.tipo === "pista" && medioActual?.id === t.id && reproduciendo;
+                  // Las pistas de iTunes/subidas usan previewUrl; las de Rekordbox se
+                  // reproducen desde el archivo local vía /api/rekordbox/stream/:id
+                  // (el backend decide si es posible según REKORDBOX_MUSIC_ROOT).
+                  const reproducible = !!t.previewUrl || (t.fuente === "rekordbox" && !!t.ruta);
                   return (
                     <tr key={t.id} className="hover:bg-surface2">
                       <td className="px-4 py-2">
@@ -301,11 +349,11 @@ export default function AutoDJ() {
                               <Music2 size={16} />
                             </div>
                           )}
-                          {t.previewUrl && (
+                          {reproducible && (
                             <button
                               onClick={() => (sonando ? alternar() : reproducirPista(t))}
                               className="absolute inset-0 flex items-center justify-center rounded-md bg-black/50 text-white opacity-0 transition hover:opacity-100"
-                              title="Escuchar preview"
+                              title="Reproducir"
                             >
                               {sonando ? <Pause size={14} /> : <Play size={14} />}
                             </button>
@@ -324,6 +372,9 @@ export default function AutoDJ() {
                       <td className="px-3 py-2 text-muted">
                         <span className="flex items-center gap-1">
                           <Clock size={13} /> {t.duracion}
+                          {t.fuente === "rekordbox" && t.bpm ? (
+                            <span className="ml-1 text-xs text-muted/80">· {Math.round(t.bpm)} BPM</span>
+                          ) : null}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">

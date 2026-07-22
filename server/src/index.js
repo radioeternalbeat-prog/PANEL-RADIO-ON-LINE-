@@ -12,6 +12,7 @@ import estacionesRoutes from "./routes/estaciones.routes.js";
 import estadisticasRoutes from "./routes/estadisticas.routes.js";
 import autodjRoutes from "./routes/autodj.routes.js";
 import itunesRoutes from "./routes/itunes.routes.js";
+import rekordboxRoutes from "./routes/rekordbox.routes.js";
 import samplesRoutes, { UPLOADS_DIR } from "./routes/samples.routes.js";
 import mensajesRoutes from "./routes/mensajes.routes.js";
 import midiRoutes from "./routes/midi.routes.js";
@@ -71,6 +72,10 @@ app.use("/api/estaciones", requiereAuth, estacionesRoutes);
 app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
 app.use("/api/autodj", requiereAuth, autodjRoutes);
 app.use("/api/itunes", requiereAuth, itunesRoutes);
+// Rekordbox: el propio router aplica requiereAuth a /importar-xml y /estado;
+// /stream/:id se autentica por ?token= porque el navegador no puede enviar
+// el header Authorization al reproducir un <audio src="...">.
+app.use("/api/rekordbox", rekordboxRoutes);
 app.use("/api/samples", requiereAuth, samplesRoutes);
 // Rutas públicas (sin autenticación): página de radio para oyentes.
 app.use("/api/publico", publicoRoutes);
