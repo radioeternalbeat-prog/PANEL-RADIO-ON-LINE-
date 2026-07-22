@@ -60,7 +60,11 @@ function crearEsquema() {
       artwork TEXT,
       preview_url TEXT,
       itunes_id INTEGER,
-      ruta TEXT
+      ruta TEXT,
+      bpm REAL,
+      tonalidad TEXT,
+      rating INTEGER,
+      rekordbox_id TEXT
     );
 
     CREATE TABLE IF NOT EXISTS playlists (
@@ -267,6 +271,19 @@ try {
   db.exec("ALTER TABLE estaciones ADD COLUMN embed_canal TEXT");
 } catch {
   /* la columna ya existe */
+}
+// Migración: metadatos de Rekordbox (BPM, tonalidad, rating, id de pista).
+for (const ddl of [
+  "ALTER TABLE pistas ADD COLUMN bpm REAL",
+  "ALTER TABLE pistas ADD COLUMN tonalidad TEXT",
+  "ALTER TABLE pistas ADD COLUMN rating INTEGER",
+  "ALTER TABLE pistas ADD COLUMN rekordbox_id TEXT",
+]) {
+  try {
+    db.exec(ddl);
+  } catch {
+    /* la columna ya existe */
+  }
 }
 sembrar();
 

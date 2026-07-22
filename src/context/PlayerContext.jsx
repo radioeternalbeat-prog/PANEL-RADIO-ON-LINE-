@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { reportarNivel } from "../audio/nivelBus";
-import { urlRecurso } from "../api/client";
+import { urlRecurso, urlStreamRekordbox } from "../api/client";
 
 const PlayerContext = createContext(null);
 
@@ -99,13 +99,19 @@ export function PlayerProvider({ children }) {
   }, []);
 
   function pistaAMedio(pista) {
+    // Pistas importadas desde Rekordbox: el audio real vive en el disco local
+    // del backend, se sirve vía /api/rekordbox/stream/:id (con Range para poder buscar).
+    let url = pista.previewUrl ? urlRecurso(pista.previewUrl) : null;
+    if (pista.fuente === "rekordbox" && pista.id) {
+      url = urlStreamRekordbox(pista.id);
+    }
     return {
       tipo: "pista",
       id: pista.id ?? pista.itunesId,
       titulo: pista.titulo,
       subtitulo: pista.artista,
       artwork: pista.artwork || null,
-      url: pista.previewUrl ? urlRecurso(pista.previewUrl) : null,
+      url,
     };
   }
 

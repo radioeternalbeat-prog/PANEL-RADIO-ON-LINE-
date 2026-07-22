@@ -110,6 +110,10 @@ export const api = {
   importarItunes: (pistas) => request("/itunes/importar", { metodo: "POST", cuerpo: { pistas } }),
   importarLibraryXml: (xml) => request("/itunes/importar-xml", { metodo: "POST", cuerpo: { xml } }),
 
+  // Rekordbox (importar colección exportada en XML)
+  importarRekordboxXml: (xml) => request("/rekordbox/importar-xml", { metodo: "POST", cuerpo: { xml } }),
+  estadoRekordbox: () => request("/rekordbox/estado"),
+
   // Mensajes (WhatsApp / oyentes)
   mensajes: () => request("/mensajes"),
   agregarMensaje: (datos) => request("/mensajes", { metodo: "POST", cuerpo: datos }),
@@ -205,4 +209,12 @@ export function urlRecurso(ruta) {
   if (/^https?:\/\//.test(ruta)) return ruta;
   const base = API_URL.replace(/\/api$/, "");
   return `${base}${ruta}`;
+}
+
+// URL de streaming de una pista de Rekordbox (archivo local del servidor).
+// Va con el token como query param porque <audio src="..."> no puede enviar
+// el header Authorization.
+export function urlStreamRekordbox(pistaId) {
+  const token = getToken();
+  return `${API_URL}/rekordbox/stream/${pistaId}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }

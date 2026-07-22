@@ -41,6 +41,10 @@ function mapPista(r) {
     previewUrl: r.preview_url,
     itunesId: r.itunes_id,
     ruta: r.ruta,
+    bpm: r.bpm ?? null,
+    tonalidad: r.tonalidad || null,
+    rating: r.rating ?? null,
+    rekordboxId: r.rekordbox_id || null,
   };
 }
 
@@ -257,12 +261,19 @@ export const pistasRepo = {
     if (!itunesId) return false;
     return !!db.prepare("SELECT 1 FROM pistas WHERE itunes_id = ?").get(itunesId);
   },
+  existeRekordbox(rekordboxId) {
+    if (!rekordboxId) return false;
+    return !!db.prepare("SELECT 1 FROM pistas WHERE rekordbox_id = ?").get(rekordboxId);
+  },
   agregar(d) {
     if (d.itunesId && this.existeItunes(d.itunesId)) return null;
+    if (d.rekordboxId && this.existeRekordbox(d.rekordboxId)) return null;
     const info = db
       .prepare(
-        `INSERT INTO pistas (titulo, artista, album, duracion, genero, fuente, artwork, preview_url, itunes_id, ruta)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`
+        `INSERT INTO pistas
+           (titulo, artista, album, duracion, genero, fuente, artwork, preview_url, itunes_id, ruta,
+            bpm, tonalidad, rating, rekordbox_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       )
       .run(
         d.titulo || "Desconocido",
@@ -274,7 +285,11 @@ export const pistasRepo = {
         d.artwork || null,
         d.previewUrl || null,
         d.itunesId || null,
-        d.ruta || null
+        d.ruta || null,
+        d.bpm ?? null,
+        d.tonalidad || null,
+        d.rating ?? null,
+        d.rekordboxId || null
       );
     return mapPista(db.prepare("SELECT * FROM pistas WHERE id = ?").get(info.lastInsertRowid));
   },
