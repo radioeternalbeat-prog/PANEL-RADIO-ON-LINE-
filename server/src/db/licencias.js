@@ -108,14 +108,14 @@ export function sembrarPlanes() {
   `);
 
   const planes = [
-    ["Oferta Lanzamiento", "oferta_lanzamiento", 20, "USD", 36500, 5, 1000, 5000, "OFERTA LIMITADA: Pago único $20 USD. Acceso FULL para siempre. 5 estaciones, 1000 oyentes, 5GB.", 1],
+    ["Oferta Lanzamiento", "oferta_lanzamiento", 30, "USD", 36500, 5, 1000, 5000, "OFERTA LIMITADA: Pago único $30 USD. Acceso FULL para siempre. 5 estaciones, 1000 oyentes, 5GB.", 1],
     ["Starter", "starter_mensual", 9990, "CLP", 30, 1, 100, 500, "1 estación, 100 oyentes, 500MB storage", 1],
     ["Profesional", "pro_mensual", 19990, "CLP", 30, 3, 500, 2000, "3 estaciones, 500 oyentes, 2GB storage", 1],
     ["Enterprise", "enterprise_mensual", 39990, "CLP", 30, 10, 2000, 10000, "10 estaciones, 2000 oyentes, 10GB storage", 1],
     ["Starter Anual", "starter_anual", 99900, "CLP", 365, 1, 100, 500, "1 estación, 100 oyentes, 500MB - Ahorra 2 meses", 1],
     ["Profesional Anual", "pro_anual", 199900, "CLP", 365, 3, 500, 2000, "3 estaciones, 500 oyentes, 2GB - Ahorra 2 meses", 1],
     ["Enterprise Anual", "enterprise_anual", 399900, "CLP", 365, 10, 2000, 10000, "10 estaciones, 2000 oyentes, 10GB - Ahorra 2 meses", 1],
-    ["Lifetime", "lifetime", 149990, "CLP", 36500, 5, 1000, 5000, "Pago único. 5 estaciones, 1000 oyentes, 5GB para siempre", 1],
+    ["Lifetime", "lifetime", 95000, "CLP", 36500, 5, 1000, 5000, "Pago único $100 USD (CLP $95.000). 5 estaciones, 1000 oyentes, 5GB para siempre", 1],
   ];
 
   for (const [nombre, codigo, precio, moneda, dias, est, oy, stor, desc, activo] of planes) {

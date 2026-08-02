@@ -189,9 +189,9 @@ export default function Planes() {
 
               <div className="flex flex-col items-center gap-3">
                 <div className="text-center">
-                  <span className="text-sm text-muted line-through">$149.990 CLP</span>
+                  <span className="text-sm text-muted line-through">$95.000 CLP</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-extrabold text-amber-400">$20</span>
+                    <span className="text-5xl font-extrabold text-amber-400">$30</span>
                     <span className="text-lg font-medium text-muted">USD</span>
                   </div>
                   <p className="text-xs text-muted">Pago único para siempre</p>
@@ -204,7 +204,7 @@ export default function Planes() {
                   {comprando === ofertaLanzamiento[0].id ? (
                     <Loader2 size={18} className="mx-auto animate-spin" />
                   ) : (
-                    "Comprar ahora — $20 USD"
+                    "Comprar ahora — $30 USD"
                   )}
                 </button>
                 <p className="text-xs text-muted">Oferta por tiempo limitado</p>
