@@ -1,7 +1,7 @@
 {
   "name": "panel-radio-online-server",
-  "version": "1.0.0",
-  "description": "API backend para PANEL RADIO ONLINE (Express + JWT + WebSocket)",
+  "version": "2.0.0",
+  "description": "API backend para PANEL RADIO ONLINE (Express + JWT + WebSocket + Licencias + Mercado Pago)",
   "type": "module",
   "main": "src/index.js",
   "engines": {

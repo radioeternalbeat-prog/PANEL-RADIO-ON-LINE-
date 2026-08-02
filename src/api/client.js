@@ -206,3 +206,45 @@ export function urlRecurso(ruta) {
   const base = API_URL.replace(/\/api$/, "");
   return `${base}${ruta}`;
 }
+
+// ============================================================
+// API de Tenants (registro, login, perfil)
+// ============================================================
+export const tenantApi = {
+  registro: (datos) =>
+    request("/tenant/registro", { metodo: "POST", cuerpo: datos, auth: false }),
+  login: (usuario, clave) =>
+    request("/tenant/login", { metodo: "POST", cuerpo: { usuario, clave }, auth: false }),
+  perfil: () => request("/tenant/perfil"),
+  cambiarClave: (actual, nueva) =>
+    request("/tenant/cambiar-clave", { metodo: "POST", cuerpo: { actual, nueva } }),
+};
+
+// Agregar métodos de licencias y pagos al api principal
+Object.assign(api, {
+  // Licencia del usuario actual
+  miLicencia: () => request("/pagos/mi-licencia"),
+  crearPreferencia: (planId) =>
+    request("/pagos/crear-preferencia", { metodo: "POST", cuerpo: { planId } }),
+  verificarPago: (mpPaymentId) => request(`/pagos/verificar/${mpPaymentId}`),
+  mpConfig: () => request("/pagos/config", { auth: false }),
+
+  // Superadmin: gestión de clientes
+  adminClientes: () => request("/licencias/clientes"),
+  adminEstadisticas: () => request("/licencias/clientes/estadisticas"),
+  adminCliente: (id) => request(`/licencias/clientes/${id}`),
+  adminPlanes: () => request("/licencias/planes/todos"),
+  adminActivarLicencia: (id, datos) =>
+    request(`/licencias/clientes/${id}/activar`, { metodo: "POST", cuerpo: datos }),
+  adminDesactivarLicencia: (id) =>
+    request(`/licencias/clientes/${id}/desactivar`, { metodo: "POST" }),
+  adminSuspender: (id) =>
+    request(`/licencias/clientes/${id}/suspender`, { metodo: "POST" }),
+  adminReactivar: (id) =>
+    request(`/licencias/clientes/${id}/reactivar`, { metodo: "POST" }),
+  adminEliminarCliente: (id) =>
+    request(`/licencias/clientes/${id}`, { metodo: "DELETE" }),
+  adminActualizarCliente: (id, datos) =>
+    request(`/licencias/clientes/${id}`, { metodo: "PUT", cuerpo: datos }),
+  adminPagos: () => request("/licencias/pagos"),
+});

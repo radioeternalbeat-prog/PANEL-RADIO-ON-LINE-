@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -146,6 +146,12 @@ export default function Login() {
 
           <p className="mt-6 text-center text-xs text-muted">
             Ingresa con las credenciales proporcionadas por tu administrador.
+          </p>
+          <p className="mt-3 text-center text-sm text-muted">
+            ¿No tienes cuenta?{" "}
+            <Link to="/registro" className="font-medium text-brand-500 hover:underline">
+              Crear cuenta gratis
+            </Link>
           </p>
         </div>
       </div>

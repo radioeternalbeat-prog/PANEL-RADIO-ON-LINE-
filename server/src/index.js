@@ -7,7 +7,11 @@ import express from "express";
 import cors from "cors";
 
 import { requiereAuth } from "./auth.js";
+import { requiereLicencia, requiereSuperadmin, infoLicencia } from "./licenciaMiddleware.js";
 import authRoutes from "./routes/auth.routes.js";
+import tenantAuthRoutes from "./routes/tenantAuth.routes.js";
+import licenciasRoutes from "./routes/licencias.routes.js";
+import mercadopagoRoutes from "./routes/mercadopago.routes.js";
 import estacionesRoutes from "./routes/estaciones.routes.js";
 import estadisticasRoutes from "./routes/estadisticas.routes.js";
 import autodjRoutes from "./routes/autodj.routes.js";
@@ -19,6 +23,7 @@ import backupRoutes from "./routes/backup.routes.js";
 import publicoRoutes from "./routes/publico.routes.js";
 import ahoraRoutes from "./routes/ahora.routes.js";
 import { mensajesRepo } from "./db/repos.js";
+import "./db/licencias.js"; // Inicializa esquema de licencias
 import { iniciarWebSocket } from "./realtime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,7 +31,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Marcador de versión para verificar qué build está desplegado.
-const VERSION = "1.10.0-azuracast-ready-2026-06";
+const VERSION = "2.0.0-licencias-multitenant-2026-08";
 
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
 // Si no se define, en producción solo permite el mismo origen; en desarrollo permite todos.
@@ -73,19 +78,28 @@ app.post("/api/webhooks/whatsapp", (req, res) => {
 // Autenticación (público)
 app.use("/api/auth", authRoutes);
 
-// Rutas protegidas (requieren token JWT)
-app.use("/api/estaciones", requiereAuth, estacionesRoutes);
-app.use("/api/estadisticas", requiereAuth, estadisticasRoutes);
-app.use("/api/autodj", requiereAuth, autodjRoutes);
-app.use("/api/itunes", requiereAuth, itunesRoutes);
-app.use("/api/samples", requiereAuth, samplesRoutes);
+// Autenticación de tenants / clientes (público: registro y login)
+app.use("/api/tenant", tenantAuthRoutes);
+
+// Licencias y planes (público: ver planes; protegido: gestionar)
+app.use("/api/licencias", requiereAuth, licenciasRoutes);
+
+// Pagos con Mercado Pago (webhook es público, crear preferencia requiere auth)
+app.use("/api/pagos", mercadopagoRoutes);
+
+// Rutas protegidas (requieren token JWT + licencia activa o trial)
+app.use("/api/estaciones", requiereAuth, requiereLicencia, infoLicencia, estacionesRoutes);
+app.use("/api/estadisticas", requiereAuth, requiereLicencia, infoLicencia, estadisticasRoutes);
+app.use("/api/autodj", requiereAuth, requiereLicencia, infoLicencia, autodjRoutes);
+app.use("/api/itunes", requiereAuth, requiereLicencia, infoLicencia, itunesRoutes);
+app.use("/api/samples", requiereAuth, requiereLicencia, infoLicencia, samplesRoutes);
 // Rutas públicas (sin autenticación): página de radio para oyentes.
 app.use("/api/publico", publicoRoutes);
 
-app.use("/api/mensajes", requiereAuth, mensajesRoutes);
-app.use("/api/midi", requiereAuth, midiRoutes);
-app.use("/api/backup", requiereAuth, backupRoutes);
-app.use("/api/ahora-suena", requiereAuth, ahoraRoutes);
+app.use("/api/mensajes", requiereAuth, requiereLicencia, mensajesRoutes);
+app.use("/api/midi", requiereAuth, requiereLicencia, midiRoutes);
+app.use("/api/backup", requiereAuth, requiereSuperadmin, backupRoutes);
+app.use("/api/ahora-suena", requiereAuth, requiereLicencia, ahoraRoutes);
 
 // 404 para rutas de API no encontradas
 app.use("/api", (req, res) => {

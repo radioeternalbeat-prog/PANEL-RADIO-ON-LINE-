@@ -4,6 +4,7 @@ import {
   configurarSesionExpirada,
   getToken,
   setToken,
+  tenantApi,
 } from "../api/client";
 
 const AuthContext = createContext(null);
@@ -21,15 +22,40 @@ export function AuthProvider({ children }) {
       setCargando(false);
       return;
     }
-    api
+    // Intentar primero como tenant, luego como admin legacy
+    tenantApi
       .perfil()
       .then((u) => setUsuario(u))
+      .catch(() => api.perfil().then((u) => setUsuario(u)))
       .catch(() => setToken(null))
       .finally(() => setCargando(false));
   }, []);
 
+  // Login unificado: intenta primero como tenant, luego como admin legacy
   async function iniciarSesion(nombreUsuario, clave) {
-    const { token, usuario: u } = await api.login(nombreUsuario, clave);
+    try {
+      const { token, usuario: u } = await tenantApi.login(nombreUsuario, clave);
+      setToken(token);
+      setUsuario(u);
+      return u;
+    } catch {
+      // Fallback: login legacy (admin del panel original)
+      const { token, usuario: u } = await api.login(nombreUsuario, clave);
+      setToken(token);
+      setUsuario(u);
+      return u;
+    }
+  }
+
+  // Registro de nuevos clientes
+  async function registrar({ nombre, email, telefono, usuario: usr, clave }) {
+    const { token, usuario: u } = await tenantApi.registro({
+      nombre,
+      email,
+      telefono,
+      usuario: usr,
+      clave,
+    });
     setToken(token);
     setUsuario(u);
     return u;
@@ -41,7 +67,15 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ usuario, cargando, autenticado: !!usuario, iniciarSesion, cerrarSesion }),
+    () => ({
+      usuario,
+      cargando,
+      autenticado: !!usuario,
+      esSuperadmin: usuario?.rol === "superadmin" || usuario?.rol === "Administrador",
+      iniciarSesion,
+      registrar,
+      cerrarSesion,
+    }),
     [usuario, cargando]
   );
 
