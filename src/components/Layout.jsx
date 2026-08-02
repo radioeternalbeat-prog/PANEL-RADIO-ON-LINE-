@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
+  CreditCard,
+  Crown,
   LayoutDashboard,
   ListMusic,
   LogOut,
@@ -12,6 +14,7 @@ import {
   RadioTower,
   Search,
   Settings,
+  ShieldCheck,
   Sun,
   X,
 } from "lucide-react";
@@ -29,6 +32,7 @@ const navItems = [
   { to: "/transmision", label: "Transmisión", icon: RadioTower },
   { to: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { to: "/autodj", label: "AutoDJ", icon: ListMusic },
+  { to: "/planes", label: "Planes y Licencia", icon: CreditCard },
   { to: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
@@ -122,7 +126,45 @@ export default function Layout() {
               {label}
             </NavLink>
           ))}
+          {/* Link de Admin solo para superadmin */}
+          {persona?.rol === "superadmin" || persona?.rol === "Administrador" ? (
+            <NavLink
+              to="/admin"
+              onClick={() => setAbierto(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+                }`
+              }
+            >
+              <ShieldCheck size={18} />
+              Admin Clientes
+            </NavLink>
+          ) : null}
         </nav>
+
+        {/* Banner de licencia / trial */}
+        {persona && persona.rol !== "superadmin" && persona.rol !== "Administrador" && (
+          <div className="mx-3 mb-2">
+            {persona.trialExpirado && !persona.licenciaActiva ? (
+              <NavLink
+                to="/planes"
+                className="block rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center text-xs font-medium text-red-400 hover:bg-red-500/20 transition"
+              >
+                Tu prueba gratuita expiró. Compra una licencia para continuar.
+              </NavLink>
+            ) : persona.enTrial ? (
+              <NavLink
+                to="/planes"
+                className="block rounded-xl border border-brand-500/30 bg-brand-500/10 p-3 text-center text-xs font-medium text-brand-400 hover:bg-brand-500/20 transition"
+              >
+                Trial: {persona.diasRestantes || "?"} días restantes
+              </NavLink>
+            ) : null}
+          </div>
+        )}
 
         <div className="absolute inset-x-3 bottom-4">
           <div className="rounded-xl border border-line bg-surface2 p-3">

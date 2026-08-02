@@ -53,6 +53,15 @@ async function request(ruta, { metodo = "GET", cuerpo, auth = true } = {}) {
     throw new Error("Sesión expirada. Inicia sesión de nuevo.");
   }
 
+  // Licencia expirada → redirigir a planes
+  if (respuesta.status === 402) {
+    const datos402 = await respuesta.json().catch(() => ({}));
+    if (typeof window !== "undefined" && !window.location.pathname.includes("/planes")) {
+      window.location.href = "/planes";
+    }
+    throw new Error(datos402.mensaje || "Tu licencia ha expirado. Adquiere un plan para continuar.");
+  }
+
   const datos = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
     throw new Error(datos.mensaje || "Ocurrió un error en la solicitud.");
