@@ -16,6 +16,7 @@ WORKDIR /app/server
 RUN npm install
 
 ENV PORT=4000
+ENV NODE_ENV=production
 ENV DB_PATH=/data/panel.db
 ENV UPLOADS_DIR=/data/uploads
 EXPOSE 4000

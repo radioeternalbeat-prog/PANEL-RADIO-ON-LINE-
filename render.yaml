@@ -8,7 +8,7 @@
 #   3. Conecta este repositorio. Render detectará este archivo y creará el servicio.
 #   4. Pulsa "Apply". En unos minutos tendrás una URL pública (https://...onrender.com).
 #
-# Inicia sesión con usuario: admin  ·  contraseña: admin123
+# Inicia sesión con el usuario y contraseña configurados en ADMIN_USER / ADMIN_PASSWORD.
 services:
   - type: web
     name: panel-radio-online
@@ -26,6 +26,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_ENV
+        value: production
       - key: JWT_SECRET
         generateValue: true
       - key: WEBHOOK_TOKEN
@@ -38,6 +40,7 @@ services:
       # Define una contraseña de admin fuerte (se usa al crear la BD por primera vez).
       - key: ADMIN_PASSWORD
         sync: false
-      # Opcional: restringe CORS a tu dominio, ej. https://tu-sitio.onrender.com
+      # OBLIGATORIO en producción: restringe CORS a tu dominio.
+      # Ejemplo: https://panel-radio-online.onrender.com
       - key: CORS_ORIGIN
         sync: false
