@@ -23,7 +23,7 @@ import backupRoutes from "./routes/backup.routes.js";
 import publicoRoutes from "./routes/publico.routes.js";
 import ahoraRoutes from "./routes/ahora.routes.js";
 import { mensajesRepo } from "./db/repos.js";
-import "./db/licencias.js"; // Inicializa esquema de licencias
+import { planesRepo } from "./db/licencias.js";
 import { iniciarWebSocket } from "./realtime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -81,7 +81,12 @@ app.use("/api/auth", authRoutes);
 // Autenticación de tenants / clientes (público: registro y login)
 app.use("/api/tenant", tenantAuthRoutes);
 
-// Licencias y planes (público: ver planes; protegido: gestionar)
+// Licencias: planes públicos (accesible sin token para la página de precios)
+app.get("/api/licencias/planes", (req, res) => {
+  res.json(planesRepo.listar());
+});
+
+// Licencias: gestión de clientes y planes (requiere auth)
 app.use("/api/licencias", requiereAuth, licenciasRoutes);
 
 // Pagos con Mercado Pago (webhook es público, crear preferencia requiere auth)
