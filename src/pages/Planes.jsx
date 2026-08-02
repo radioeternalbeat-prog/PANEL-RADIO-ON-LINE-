@@ -91,10 +91,11 @@ export default function Planes() {
     );
   }
 
-  // Separar mensuales, anuales y lifetime
+  // Separar oferta lanzamiento, mensuales, anuales y lifetime
+  const ofertaLanzamiento = planes.filter((p) => p.codigo?.includes("lanzamiento"));
   const mensuales = planes.filter((p) => p.codigo?.includes("mensual"));
   const anuales = planes.filter((p) => p.codigo?.includes("anual"));
-  const lifetime = planes.filter((p) => p.codigo?.includes("lifetime"));
+  const lifetime = planes.filter((p) => p.codigo === "lifetime");
 
   return (
     <div className="space-y-8">
@@ -145,6 +146,72 @@ export default function Planes() {
         <p className="mx-auto max-w-2xl rounded-lg bg-red-500/10 px-4 py-3 text-center text-sm text-red-500">
           {error}
         </p>
+      )}
+
+      {/* OFERTA DE LANZAMIENTO — DESTACADA */}
+      {ofertaLanzamiento.length > 0 && (
+        <div className="mx-auto max-w-2xl">
+          <div className="relative overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-gradient-to-br from-amber-500/10 via-surface to-brand-500/10 p-8 shadow-2xl shadow-amber-500/10">
+            {/* Badge */}
+            <div className="absolute -right-8 top-6 rotate-45 bg-amber-500 px-10 py-1 text-xs font-bold text-black shadow">
+              LIMITADA
+            </div>
+
+            <div className="flex flex-col items-center gap-6 md:flex-row">
+              <div className="flex-1 text-center md:text-left">
+                <span className="inline-block rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-400">
+                  Oferta de Lanzamiento
+                </span>
+                <h2 className="mt-3 text-2xl font-bold text-fg">
+                  Acceso FULL para siempre
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  Pago único. Sin suscripciones. Sin renovaciones. Todas las funciones incluidas: 5 estaciones, 1000 oyentes, 5GB de almacenamiento.
+                </p>
+                <ul className="mt-4 space-y-1 text-sm text-fg">
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-amber-400" /> 5 estaciones simultáneas
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-amber-400" /> Hasta 1000 oyentes
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-amber-400" /> AutoDJ + iTunes + MIDI
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-amber-400" /> Actualizaciones incluidas
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-amber-400" /> Soporte prioritario
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-center">
+                  <span className="text-sm text-muted line-through">$149.990 CLP</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-extrabold text-amber-400">$20</span>
+                    <span className="text-lg font-medium text-muted">USD</span>
+                  </div>
+                  <p className="text-xs text-muted">Pago único para siempre</p>
+                </div>
+                <button
+                  onClick={() => comprar(ofertaLanzamiento[0].id)}
+                  disabled={comprando === ofertaLanzamiento[0].id}
+                  className="rounded-xl bg-amber-500 px-8 py-3 text-sm font-bold text-black shadow-lg shadow-amber-500/30 transition hover:bg-amber-400 hover:shadow-amber-400/40 disabled:opacity-50"
+                >
+                  {comprando === ofertaLanzamiento[0].id ? (
+                    <Loader2 size={18} className="mx-auto animate-spin" />
+                  ) : (
+                    "Comprar ahora — $20 USD"
+                  )}
+                </button>
+                <p className="text-xs text-muted">Oferta por tiempo limitado</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Planes mensuales */}
