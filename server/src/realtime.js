@@ -125,7 +125,16 @@ export function iniciarWebSocket(server) {
     const url = new URL(req.url, "http://localhost");
     const token = url.searchParams.get("token");
     const payload = token ? verificarToken(token) : null;
+
+    // En producción, rechazar conexiones sin token válido.
+    // Las rutas públicas (/api/publico) ya proveen datos para oyentes sin auth.
+    if (!payload && process.env.NODE_ENV === "production") {
+      socket.close(4001, "Token requerido");
+      return;
+    }
+
     socket.usuario = payload?.usuario || "anonimo";
+    socket.autenticado = !!payload;
 
     socket.send(JSON.stringify(construirSnapshot()));
   });

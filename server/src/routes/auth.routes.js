@@ -3,11 +3,26 @@ import bcrypt from "bcryptjs";
 import { login } from "../auth.js";
 import { requiereAuth } from "../auth.js";
 import { usuariosRepo } from "../db/repos.js";
+import { crearRateLimit } from "../rateLimit.js";
+
+// Máximo 5 intentos de login por minuto por IP.
+const loginLimiter = crearRateLimit({
+  ventanaMs: 60_000,
+  max: 5,
+  mensaje: "Demasiados intentos de inicio de sesión. Espera 1 minuto.",
+});
+
+// Máximo 3 intentos de cambio de clave por minuto.
+const cambioLimiter = crearRateLimit({
+  ventanaMs: 60_000,
+  max: 3,
+  mensaje: "Demasiados intentos. Espera 1 minuto.",
+});
 
 const router = Router();
 
 // POST /api/auth/login
-router.post("/login", (req, res) => {
+router.post("/login", loginLimiter, (req, res) => {
   const { usuario, clave } = req.body || {};
   if (!usuario || !clave) {
     return res.status(400).json({ mensaje: "Usuario y contraseña son obligatorios." });
@@ -35,7 +50,7 @@ router.get("/perfil", requiereAuth, (req, res) => {
 });
 
 // POST /api/auth/cambiar-clave  { actual, nueva }  (requiere token)
-router.post("/cambiar-clave", requiereAuth, (req, res) => {
+router.post("/cambiar-clave", requiereAuth, cambioLimiter, (req, res) => {
   const { actual, nueva } = req.body || {};
   if (!actual || !nueva) {
     return res.status(400).json({ mensaje: "Faltan datos." });

@@ -3,6 +3,14 @@ import multer from "multer";
 import path from "node:path";
 import { pistasRepo, playlistsRepo, programacionRepo, insercionesRepo } from "../db/repos.js";
 import { UPLOADS_DIR } from "./samples.routes.js";
+import { crearRateLimit } from "../rateLimit.js";
+
+// Máximo 15 subidas de canciones por minuto por IP.
+const uploadLimiter = crearRateLimit({
+  ventanaMs: 60_000,
+  max: 15,
+  mensaje: "Demasiadas subidas. Espera un momento antes de subir más canciones.",
+});
 
 const router = Router();
 
@@ -40,7 +48,7 @@ router.delete("/biblioteca/:id", (req, res) => {
 
 // POST /api/autodj/subir  (multipart: campo "archivo" + titulo, artista, genero)
 // Sube una canción completa a la biblioteca (reproducible en player y decks).
-router.post("/subir", subir.single("archivo"), (req, res) => {
+router.post("/subir", uploadLimiter, subir.single("archivo"), (req, res) => {
   if (!req.file) return res.status(400).json({ mensaje: "Falta el archivo de audio." });
   const { titulo, artista, genero } = req.body || {};
   const nombre = titulo || req.file.originalname.replace(/\.[^.]+$/, "");
@@ -93,7 +101,7 @@ router.delete("/playlists/:id/pistas/:pistaId", (req, res) => {
 });
 
 // POST /api/autodj/playlists/:id/subir  (multipart) -> sube audio Y lo agrega a la playlist
-router.post("/playlists/:id/subir", subir.single("archivo"), (req, res) => {
+router.post("/playlists/:id/subir", uploadLimiter, subir.single("archivo"), (req, res) => {
   if (!req.file) return res.status(400).json({ mensaje: "Falta el archivo de audio." });
   const { titulo, artista } = req.body || {};
   const url = `/uploads/${req.file.filename}`;

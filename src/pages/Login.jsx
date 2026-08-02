@@ -8,7 +8,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { iniciarSesion } = useAuth();
   const { esOscuro } = useTheme();
-  const [usuario, setUsuario] = useState("admin");
+  const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -145,8 +145,7 @@ export default function Login() {
           </form>
 
           <p className="mt-6 text-center text-xs text-muted">
-            Demo: usuario <span className="font-semibold text-fg">admin</span> · contraseña{" "}
-            <span className="font-semibold text-fg">admin123</span>
+            Ingresa con las credenciales proporcionadas por tu administrador.
           </p>
         </div>
       </div>

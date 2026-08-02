@@ -3,17 +3,41 @@ import { db } from "../db/db.js";
 
 const router = Router();
 
+// Tablas válidas del esquema (whitelist estricta para prevenir SQL injection).
+const TABLAS_PERMITIDAS = new Set([
+  "usuarios",
+  "estaciones",
+  "pistas",
+  "playlists",
+  "programacion",
+  "oyentes_pais",
+  "ancho_banda",
+  "samples",
+  "mensajes",
+  "playlist_pistas",
+  "inserciones",
+  "historial",
+  "midi_mapeos",
+]);
+
+// Valida que un nombre de tabla sea seguro (solo letras, números, guion bajo).
+function esNombreSeguro(nombre) {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(nombre);
+}
+
 // Lista las tablas reales de la base de datos (excluye internas de SQLite).
 function listarTablas() {
   return db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
     .all()
-    .map((r) => r.name);
+    .map((r) => r.name)
+    .filter((t) => TABLAS_PERMITIDAS.has(t));
 }
 
 // Columnas existentes de una tabla (para filtrar al restaurar).
 function columnasDe(tabla) {
-  return db.prepare(`PRAGMA table_info(${tabla})`).all().map((c) => c.name);
+  if (!TABLAS_PERMITIDAS.has(tabla) || !esNombreSeguro(tabla)) return [];
+  return db.prepare(`PRAGMA table_info("${tabla}")`).all().map((c) => c.name);
 }
 
 // GET /api/backup/exportar
@@ -24,7 +48,7 @@ router.get("/exportar", (req, res) => {
     const datos = {};
     let totalRegistros = 0;
     for (const t of tablas) {
-      const filas = db.prepare(`SELECT * FROM ${t}`).all();
+      const filas = db.prepare(`SELECT * FROM "${t}"`).all();
       datos[t] = filas;
       totalRegistros += filas.length;
     }
@@ -57,19 +81,26 @@ router.post("/importar", (req, res) => {
   db.exec("BEGIN");
   try {
     for (const [tabla, filas] of Object.entries(backup.tablas)) {
-      if (!tablasBD.has(tabla) || !Array.isArray(filas)) continue;
-      const colsValidas = new Set(columnasDe(tabla));
+      // Validación estricta: solo tablas permitidas con nombres seguros
+      if (!tablasBD.has(tabla) || !TABLAS_PERMITIDAS.has(tabla)) continue;
+      if (!esNombreSeguro(tabla) || !Array.isArray(filas)) continue;
 
-      db.exec(`DELETE FROM ${tabla}`);
+      const colsValidas = new Set(columnasDe(tabla));
+      if (colsValidas.size === 0) continue;
+
+      db.exec(`DELETE FROM "${tabla}"`);
 
       for (const fila of filas) {
         // Solo columnas que existan hoy en la tabla (tolera cambios de esquema).
-        const cols = Object.keys(fila).filter((c) => colsValidas.has(c));
+        const cols = Object.keys(fila).filter(
+          (c) => colsValidas.has(c) && esNombreSeguro(c)
+        );
         if (cols.length === 0) continue;
         const placeholders = cols.map(() => "?").join(",");
         const valores = cols.map((c) => fila[c]);
+        const colsQuoted = cols.map((c) => `"${c}"`).join(",");
         db.prepare(
-          `INSERT INTO ${tabla} (${cols.join(",")}) VALUES (${placeholders})`
+          `INSERT INTO "${tabla}" (${colsQuoted}) VALUES (${placeholders})`
         ).run(...valores);
         totalRestaurado++;
       }

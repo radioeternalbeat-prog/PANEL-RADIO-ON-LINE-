@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Copy,
   DatabaseBackup,
@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { api } from "../api/client";
-import { bitratesSoportados, estaciones, formatosSoportados } from "../data/mockData";
+import { bitratesSoportados, formatosSoportados } from "../data/mockData";
 import PanelMidiMapping from "../components/configuracion/PanelMidiMapping";
 
 function Campo({ label, children }) {
@@ -25,21 +25,26 @@ function Campo({ label, children }) {
 }
 
 export default function Configuracion() {
-  const e = estaciones[0];
   const [cfg, setCfg] = useState({
-    nombre: e.nombre,
-    host: e.host,
-    puerto: e.puerto,
-    montaje: e.montaje,
-    formato: e.formato,
-    bitrate: e.bitrate,
-    oyentesMaximos: e.oyentesMaximos,
-    autodj: e.autodj,
+    nombre: "",
+    host: "",
+    puerto: "",
+    montaje: "",
+    formato: "MP3",
+    bitrate: 128,
+    oyentesMaximos: 100,
+    autodj: false,
     publica: true,
-    genero: "Variada",
-    descripcion: "La mejor música 24/7",
+    genero: "",
+    descripcion: "",
+    sourceUser: "",
+    sourcePassword: "",
   });
+  const [estacionId, setEstacionId] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [errorCfg, setErrorCfg] = useState(null);
 
   // Cambio de contraseña del panel.
   const [pwd, setPwd] = useState({ actual: "", nueva: "", confirmar: "" });
@@ -128,18 +133,81 @@ export default function Configuracion() {
     }
   }
 
+  // Cargar datos reales de la estación desde la API al montar.
+  useEffect(() => {
+    async function cargarEstacion() {
+      setCargando(true);
+      try {
+        const estaciones = await api.estaciones();
+        if (estaciones && estaciones.length > 0) {
+          const e = estaciones[0];
+          setEstacionId(e.id);
+          setCfg({
+            nombre: e.nombre || "",
+            host: e.host || "",
+            puerto: e.puerto || "",
+            montaje: e.montaje || "",
+            formato: e.formato || "MP3",
+            bitrate: e.bitrate || 128,
+            oyentesMaximos: e.oyentesMaximos || e.oyentes_maximos || 100,
+            autodj: Boolean(e.autodj),
+            publica: true,
+            genero: e.genero || "Variada",
+            descripcion: e.descripcion || "",
+            sourceUser: e.sourceUser || "",
+            sourcePassword: "",
+          });
+        }
+      } catch (err) {
+        setErrorCfg("No se pudo cargar la configuración: " + (err.message || "Error desconocido"));
+      } finally {
+        setCargando(false);
+      }
+    }
+    cargarEstacion();
+  }, []);
+
   function set(campo, valor) {
     setCfg((c) => ({ ...c, [campo]: valor }));
     setGuardado(false);
   }
 
-  function guardar(ev) {
+  async function guardar(ev) {
     ev.preventDefault();
-    setGuardado(true);
-    setTimeout(() => setGuardado(false), 2500);
+    setGuardando(true);
+    setErrorCfg(null);
+    try {
+      await api.actualizarEstacion(estacionId, {
+        nombre: cfg.nombre,
+        host: cfg.host,
+        puerto: Number(cfg.puerto),
+        montaje: cfg.montaje,
+        formato: cfg.formato,
+        bitrate: Number(cfg.bitrate),
+        oyentes_maximos: Number(cfg.oyentesMaximos),
+        autodj: cfg.autodj ? 1 : 0,
+        genero: cfg.genero,
+        descripcion: cfg.descripcion,
+      });
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 3000);
+    } catch (err) {
+      setErrorCfg(err.message || "No se pudo guardar la configuración.");
+    } finally {
+      setGuardando(false);
+    }
   }
 
   const urlStream = `http://${cfg.host}:${cfg.puerto}${cfg.montaje}`;
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-brand-500" />
+        <span className="ml-3 text-muted">Cargando configuración...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -147,6 +215,10 @@ export default function Configuracion() {
         <h1 className="text-2xl font-bold text-fg">Configuración</h1>
         <p className="text-sm text-muted">Ajustes del servidor de streaming y la estación.</p>
       </div>
+
+      {errorCfg && (
+        <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-500">{errorCfg}</p>
+      )}
 
       <form onSubmit={guardar} className="grid gap-6 lg:grid-cols-3">
         {/* Columna principal */}
@@ -245,10 +317,10 @@ export default function Configuracion() {
             </div>
             <div className="space-y-3">
               <Campo label="Usuario fuente (DJ)">
-                <input className="input" defaultValue="source" />
+                <input className="input" value={cfg.sourceUser || ""} onChange={(ev) => set("sourceUser", ev.target.value)} placeholder="source" />
               </Campo>
               <Campo label="Contraseña fuente">
-                <input type="password" className="input" defaultValue="hackme123" />
+                <input type="password" className="input" value={cfg.sourcePassword || ""} onChange={(ev) => set("sourcePassword", ev.target.value)} placeholder="••••••••" />
               </Campo>
             </div>
           </div>
@@ -357,8 +429,9 @@ export default function Configuracion() {
             )}
           </div>
 
-          <button type="submit" className="btn-primary w-full py-2.5">
-            <Save size={18} /> Guardar cambios
+          <button type="submit" className="btn-primary w-full py-2.5" disabled={guardando}>
+            {guardando ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {guardando ? "Guardando..." : "Guardar cambios"}
           </button>
           {guardado && (
             <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">

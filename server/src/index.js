@@ -29,10 +29,17 @@ const PORT = process.env.PORT || 4000;
 const VERSION = "1.10.0-azuracast-ready-2026-06";
 
 // CORS restringible en producción: define CORS_ORIGIN=https://tu-dominio (separa varios con coma).
+// Si no se define, en producción solo permite el mismo origen; en desarrollo permite todos.
 const origenesPermitidos = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
   : null;
-app.use(cors(origenesPermitidos ? { origin: origenesPermitidos } : {}));
+
+const corsOptions = origenesPermitidos
+  ? { origin: origenesPermitidos, credentials: true }
+  : process.env.NODE_ENV === "production"
+    ? { origin: false } // Bloquea cross-origin en producción si no se configura
+    : {}; // Permite todo en desarrollo
+app.use(cors(corsOptions));
 // Límite alto para permitir la importación de iTunes Library.xml (puede pesar varios MB).
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));

@@ -5,6 +5,14 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { samplesRepo } from "../db/repos.js";
+import { crearRateLimit } from "../rateLimit.js";
+
+// Máximo 10 subidas de samples por minuto por IP.
+const uploadLimiter = crearRateLimit({
+  ventanaMs: 60_000,
+  max: 10,
+  mensaje: "Demasiadas subidas. Espera un momento antes de subir más archivos.",
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const UPLOADS_DIR = process.env.UPLOADS_DIR
@@ -41,7 +49,7 @@ router.get("/", (req, res) => {
 });
 
 // POST /api/samples  (multipart: campo "archivo" + nombre, categoria, color)
-router.post("/", upload.single("archivo"), (req, res) => {
+router.post("/", uploadLimiter, upload.single("archivo"), (req, res) => {
   if (!req.file) return res.status(400).json({ mensaje: "Falta el archivo de audio." });
   const { nombre, categoria, color, slot } = req.body || {};
   const sample = samplesRepo.agregar({

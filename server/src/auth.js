@@ -2,7 +2,14 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { usuariosRepo } from "./db/repos.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "cambia-esta-clave-en-produccion";
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === "production") {
+    console.error("❌ FATAL: JWT_SECRET no está definido. Define la variable de entorno JWT_SECRET antes de iniciar en producción.");
+    process.exit(1);
+  }
+  console.warn("⚠️  JWT_SECRET no definido. Usando clave de desarrollo (NO usar en producción).");
+  return "dev-only-secret-" + Date.now();
+})();
 const JWT_EXPIRA = process.env.JWT_EXPIRA || "8h";
 
 export function generarToken(usuario) {
