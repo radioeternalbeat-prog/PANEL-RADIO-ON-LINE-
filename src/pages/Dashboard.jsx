@@ -3,8 +3,11 @@ import {
   Activity,
   AlertCircle,
   Clock3,
+  Disc3,
   Headphones,
+  History,
   Loader2,
+  Lock,
   Music2,
   Pause,
   Play,
@@ -16,13 +19,18 @@ import {
   Square,
   TrendingUp,
   Users,
+  Volume2,
+  VolumeX,
   Wifi,
 } from "lucide-react";
 import { api } from "../api/client";
 import { useRealtime } from "../hooks/useRealtime";
 import { usePlayer } from "../context/PlayerContext";
+import { useAuth } from "../context/AuthContext";
 import ModalEstacion from "../components/estaciones/ModalEstacion";
 import ModalCompartir from "../components/estaciones/ModalCompartir";
+
+// ---- Componentes auxiliares ----
 
 function Estado({ estado }) {
   const map = {
@@ -39,26 +47,43 @@ function Estado({ estado }) {
   );
 }
 
-// Ecualizador animado (activo cuando la estación está en línea).
-function Eq({ activo }) {
+// Ecualizador animado
+function Eq({ activo, grande }) {
+  const barras = grande ? 8 : 4;
   return (
-    <span className="flex h-4 w-5 items-end gap-0.5">
-      {[0, 1, 2, 3].map((i) => (
+    <span className={`flex items-end gap-0.5 ${grande ? "h-8 w-14" : "h-4 w-5"}`}>
+      {Array.from({ length: barras }).map((_, i) => (
         <span
           key={i}
-          className={`w-1 rounded-full ${activo ? "bg-brand-500 animate-eq" : "bg-line"}`}
-          style={activo ? { animationDelay: `${i * 0.18}s`, height: "25%" } : { height: "25%" }}
+          className={`rounded-full ${grande ? "w-1.5" : "w-1"} ${activo ? "bg-brand-500 animate-eq" : "bg-line"}`}
+          style={activo ? { animationDelay: `${i * 0.12}s`, height: "25%" } : { height: "25%" }}
         />
       ))}
     </span>
   );
 }
 
+// Mini gráfica de oyentes (barras de los últimos N snapshots)
+function MiniGrafica({ historial }) {
+  const max = Math.max(1, ...historial);
+  return (
+    <div className="flex h-12 items-end gap-px">
+      {historial.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-t bg-brand-500/60 transition-all duration-300"
+          style={{ height: `${Math.max(4, (v / max) * 100)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function KpiCard({ icon: Icon, etiqueta, valor, detalle, color }) {
   return (
-    <div className="card p-5 transition hover:-translate-y-0.5 hover:shadow-glow">
-      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${color}`}>
-        <Icon size={22} />
+    <div className="card p-4 transition hover:-translate-y-0.5 hover:shadow-glow">
+      <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+        <Icon size={20} />
       </div>
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{etiqueta}</p>
       <p className="font-display text-2xl font-bold text-fg">{valor}</p>
@@ -67,30 +92,36 @@ function KpiCard({ icon: Icon, etiqueta, valor, detalle, color }) {
   );
 }
 
-function Stat({ icon: Icon, valor, label }) {
-  return (
-    <div className="rounded-xl bg-surface2 p-2 text-center">
-      <Icon size={14} className="mx-auto text-muted" />
-      <p className="mt-0.5 font-display text-lg font-bold leading-none text-fg">{valor}</p>
-      <p className="mt-1 text-[10px] text-muted">{label}</p>
-    </div>
-  );
-}
+// ---- Componente principal ----
 
 export default function Dashboard() {
   const [estaciones, setEstaciones] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [accionando, setAccionando] = useState(null);
   const [modalEstacion, setModalEstacion] = useState(null);
   const [compartir, setCompartir] = useState(null);
+  const [oyentesHistorial, setOyentesHistorial] = useState([]);
   const { reproducir, estacionActual, reproduciendo, alternar } = usePlayer();
   const { datos: realtime, conectado } = useRealtime();
+  const { usuario } = useAuth();
+
+  // Límite de estaciones según plan (por ahora 1 para starter, expandible)
+  const maxEstaciones = usuario?.maxEstaciones || 1;
 
   async function cargar() {
     try {
       setError("");
-      setEstaciones(await api.estaciones());
+      const est = await api.estaciones();
+      setEstaciones(est);
+      // Cargar historial de la primera estación
+      if (est.length > 0) {
+        try {
+          const h = await api.historialEstacion?.(est[0].id) || [];
+          setHistorial(h);
+        } catch { /* endpoint puede no existir aún */ }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -98,9 +129,15 @@ export default function Dashboard() {
     }
   }
 
+  useEffect(() => { cargar(); }, []);
+
+  // Acumular historial de oyentes para la mini gráfica (últimos 30 snapshots)
   useEffect(() => {
-    cargar();
-  }, []);
+    if (realtime?.estaciones?.length > 0) {
+      const total = realtime.estaciones.reduce((a, e) => a + (e.oyentesActuales || 0), 0);
+      setOyentesHistorial((prev) => [...prev.slice(-29), total]);
+    }
+  }, [realtime]);
 
   const estacionesVivo = useMemo(() => {
     if (!realtime?.estaciones) return estaciones;
@@ -134,11 +171,10 @@ export default function Dashboard() {
     setModalEstacion(null);
   }
 
-  const totalOyentes = estacionesVivo.reduce((a, e) => a + e.oyentesActuales, 0);
+  const totalOyentes = estacionesVivo.reduce((a, e) => a + (e.oyentesActuales || 0), 0);
   const enLinea = estacionesVivo.filter((e) => e.estado === "online").length;
-  const picoTotal = estacionesVivo.reduce((a, e) => a + e.picoOyentes, 0);
-  const hayReal = estacionesVivo.some((e) => e.real);
-  const realEnVivo = estacionesVivo.some((e) => e.real && e.estado === "online");
+  const picoTotal = estacionesVivo.reduce((a, e) => a + (e.picoOyentes || 0), 0);
+  const puedeCrear = estacionesVivo.length < maxEstaciones;
 
   if (cargando) {
     return (
@@ -150,22 +186,28 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-fg">Estaciones</h1>
+          <h1 className="text-2xl font-bold text-fg">Mi Estación</h1>
           <p className="flex items-center gap-2 text-sm text-muted">
-            Resumen y control de tus transmisiones.
+            Control total de tu radio en vivo.
             <span
               className={`badge ${conectado ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-surface2 text-muted"}`}
-              title="Conexión de datos en vivo"
             >
               <Wifi size={12} /> {conectado ? "En vivo" : "Sin conexión"}
             </span>
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setModalEstacion({})}>
-          <Plus size={18} /> Nueva estación
-        </button>
+        {puedeCrear ? (
+          <button className="btn-primary" onClick={() => setModalEstacion({})}>
+            <Plus size={18} /> Nueva estación
+          </button>
+        ) : (
+          <span className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
+            <Lock size={14} /> Límite de estaciones ({estacionesVivo.length}/{maxEstaciones})
+          </span>
+        )}
       </div>
 
       {error && (
@@ -176,153 +218,274 @@ export default function Dashboard() {
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={Radio} etiqueta="Estaciones activas" valor={`${enLinea}/${estacionesVivo.length}`} detalle="En transmisión" color="bg-brand-500/15 text-brand-500" />
-        <KpiCard icon={Headphones} etiqueta="Oyentes ahora" valor={totalOyentes} detalle="En todas las estaciones" color="bg-emerald-500/15 text-emerald-500" />
-        <KpiCard icon={TrendingUp} etiqueta="Pico de oyentes" valor={picoTotal} detalle="Máximo histórico" color="bg-amber-500/15 text-amber-500" />
-        <KpiCard
-          icon={Signal}
-          etiqueta="Estado del servidor"
-          valor={realEnVivo ? "En vivo" : hayReal ? "Fuera del aire" : "Operativo"}
-          detalle={hayReal ? "Caster.fm · datos reales" : "Icecast 2.4.4"}
-          color="bg-accent-500/15 text-accent-500"
-        />
+        <KpiCard icon={Radio} etiqueta="Estaciones" valor={`${enLinea}/${estacionesVivo.length}`} detalle="En transmisión" color="bg-brand-500/15 text-brand-500" />
+        <KpiCard icon={Headphones} etiqueta="Oyentes ahora" valor={totalOyentes} detalle="En tiempo real" color="bg-emerald-500/15 text-emerald-500" />
+        <KpiCard icon={TrendingUp} etiqueta="Pico máximo" valor={picoTotal} detalle="Récord histórico" color="bg-amber-500/15 text-amber-500" />
+        <KpiCard icon={Signal} etiqueta="Calidad" valor={estacionesVivo[0]?.bitrate ? `${estacionesVivo[0].bitrate} kbps` : "—"} detalle={estacionesVivo[0]?.formato || "—"} color="bg-accent-500/15 text-accent-500" />
       </div>
 
-      {/* Tarjetas de estación */}
-      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        {estacionesVivo.map((e) => {
-          const online = e.estado === "online";
-          const esActual = estacionActual?.id === e.id;
-          const sonando = esActual && reproduciendo;
-          const ocupado = accionando === e.id;
-          const pct = Math.min(100, Math.round((e.oyentesActuales / e.oyentesMaximos) * 100));
-          const lleno = pct >= 90;
-          return (
-            <div
-              key={e.id}
-              className={`card group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-glow ${
-                online ? "ring-1 ring-brand-500/30" : ""
-              }`}
-            >
-              {/* Resplandor superior si está en vivo */}
-              {online && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand-500/10 to-transparent" />
-              )}
+      {/* Estaciones */}
+      {estacionesVivo.map((e) => {
+        const online = e.estado === "online";
+        const esActual = estacionActual?.id === e.id;
+        const sonando = esActual && reproduciendo;
+        const ocupado = accionando === e.id;
+        const pct = Math.min(100, Math.round(((e.oyentesActuales || 0) / (e.oyentesMaximos || 100)) * 100));
+        const lleno = pct >= 90;
 
-              {/* Cabecera */}
-              <div className="relative flex items-center gap-3 p-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-grad text-white shadow-glow">
-                  <Radio size={22} />
+        return (
+          <div key={e.id} className="card overflow-hidden">
+            {/* Cabecera de estación con gradiente */}
+            <div className={`relative p-6 ${online ? "bg-gradient-to-r from-brand-600/20 via-surface to-emerald-600/10" : "bg-surface"}`}>
+              {/* Glow effect */}
+              {online && <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-500/5 to-transparent" />}
+
+              <div className="relative flex items-start gap-4">
+                {/* Avatar de estación */}
+                <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl shadow-lg ${online ? "bg-brand-grad shadow-brand-500/20" : "bg-surface2"}`}>
+                  <Radio size={36} className={online ? "text-white" : "text-muted"} />
                 </div>
+
+                {/* Info principal */}
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-bold text-fg">{e.nombre}</h3>
-                  <p className="truncate text-xs text-muted">
-                    {e.formato} · {e.bitrate} kbps · {e.montaje}
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-fg">{e.nombre}</h2>
+                    <Estado estado={e.estado} />
+                  </div>
+                  <p className="mt-1 text-sm text-muted">
+                    {e.servidor || "Icecast"} · {e.formato} · {e.bitrate} kbps · {e.montaje}
+                  </p>
+                  {e.real && (
+                    <p className={`mt-1 flex items-center gap-1 text-xs font-semibold ${online ? "text-emerald-400" : "text-muted"}`}>
+                      <Wifi size={12} /> {online ? "Datos reales del servidor" : "Servidor real · sin emisión"}
+                    </p>
+                  )}
+                  {/* Uptime */}
+                  <p className="mt-2 flex items-center gap-1 text-xs text-muted">
+                    <Clock3 size={12} className={online ? "text-emerald-500" : ""} />
+                    {online ? `En línea · ${e.uptime}` : "Detenida"}
                   </p>
                 </div>
-                <Estado estado={e.estado} />
-              </div>
 
-              {/* Indicador de datos reales del servidor */}
-              {e.real && (
-                <div className="relative mx-4 -mt-1 mb-1 flex items-center gap-1.5 text-[11px] font-semibold">
-                  <Wifi size={12} className={e.estado === "online" ? "text-emerald-500" : "text-muted"} />
-                  <span className={e.estado === "online" ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}>
-                    {e.estado === "online" ? "Datos reales en vivo" : "Servidor real · sin emisión"}
-                  </span>
-                </div>
-              )}
-
-              {/* Ahora suena */}
-              <div className="mx-4 flex items-center gap-2 rounded-xl bg-surface2 px-3 py-2">
-                <Eq activo={online} />
-                <p className="truncate text-sm text-muted">{e.cancionActual}</p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-2 p-4">
-                <Stat icon={Users} valor={e.oyentesActuales} label="Oyentes" />
-                <Stat icon={TrendingUp} valor={e.picoOyentes} label="Pico" />
-                <Stat icon={Activity} valor={e.oyentesMaximos} label="Límite" />
-              </div>
-
-              {/* Capacidad */}
-              <div className="px-4 pb-1">
-                <div className="mb-1 flex justify-between text-[11px] text-muted">
-                  <span>Capacidad</span>
-                  <span className={lleno ? "font-bold text-red-500" : ""}>{pct}%</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      lleno ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-brand-grad"
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Uptime */}
-              <div className="px-4 pb-3 pt-2 text-[11px] text-muted">
-                {online ? (
-                  <span className="flex items-center gap-1">
-                    <Clock3 size={12} className="text-emerald-500" /> En línea · {e.uptime}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <Clock3 size={12} /> Detenida
-                  </span>
-                )}
-              </div>
-
-              {/* Acciones */}
-              <div className="mt-auto flex items-center gap-2 border-t border-line p-3">
-                {online ? (
-                  <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-danger flex-1">
-                    {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} />} Detener
+                {/* Controles principales */}
+                <div className="flex shrink-0 flex-col gap-2">
+                  {online ? (
+                    <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-danger">
+                      {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} />} Detener
+                    </button>
+                  ) : (
+                    <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-success">
+                      {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar
+                    </button>
+                  )}
+                  <button className="btn-ghost text-xs" onClick={() => setModalEstacion({ estacion: e })}>
+                    <Settings2 size={14} /> Configurar
                   </button>
-                ) : (
-                  <button onClick={() => toggleEstado(e)} disabled={ocupado} className="btn-success flex-1">
-                    {ocupado ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (e.embedToken && e.embedCanal) {
-                      setCompartir(e);
-                      return;
-                    }
-                    esActual ? alternar() : reproducir(e);
-                  }}
-                  disabled={!online}
-                  className="btn-ghost px-2.5"
-                  title="Escuchar"
-                >
-                  {sonando ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-                <button className="btn-ghost px-2.5" title="Compartir" onClick={() => setCompartir(e)}>
-                  <Share2 size={16} />
-                </button>
-                <button className="btn-ghost px-2.5" title="Configurar" onClick={() => setModalEstacion({ estacion: e })}>
-                  <Settings2 size={16} />
-                </button>
+                </div>
               </div>
             </div>
-          );
-        })}
 
-        {/* Tarjeta para crear nueva estación */}
+            {/* Ahora suena — sección destacada */}
+            <div className="border-y border-line bg-surface2/50 px-6 py-4">
+              <div className="flex items-center gap-4">
+                {/* Artwork placeholder + ecualizador */}
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${online ? "bg-brand-500/20" : "bg-surface2"}`}>
+                  {online ? (
+                    <Eq activo grande />
+                  ) : (
+                    <Music2 size={24} className="text-muted" />
+                  )}
+                </div>
+
+                {/* Track info */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    {online ? "Ahora suena" : "Última reproducción"}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-fg">
+                    {e.cancionActual || "—"}
+                  </p>
+                </div>
+
+                {/* Player integrado */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (e.embedToken && e.embedCanal) { setCompartir(e); return; }
+                      esActual ? alternar() : reproducir(e);
+                    }}
+                    disabled={!online}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full transition ${
+                      sonando
+                        ? "bg-brand-500 text-white shadow-lg shadow-brand-500/30"
+                        : online
+                          ? "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"
+                          : "bg-surface2 text-muted"
+                    }`}
+                    title={sonando ? "Pausar" : "Escuchar"}
+                  >
+                    {sonando ? <Pause size={18} /> : <Volume2 size={18} />}
+                  </button>
+                  <button className="btn-ghost px-2" title="Compartir" onClick={() => setCompartir(e)}>
+                    <Share2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Cuerpo: métricas + gráfica + historial */}
+            <div className="grid gap-6 p-6 lg:grid-cols-3">
+              {/* Columna 1: Métricas en vivo */}
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <Activity size={14} /> Métricas en vivo
+                </h3>
+
+                {/* Oyentes */}
+                <div className="rounded-xl bg-surface2 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users size={16} className="text-brand-400" />
+                      <span className="text-sm text-muted">Oyentes</span>
+                    </div>
+                    <span className="font-display text-2xl font-bold text-fg">{e.oyentesActuales || 0}</span>
+                  </div>
+                  {/* Barra de capacidad */}
+                  <div className="mt-3">
+                    <div className="mb-1 flex justify-between text-[10px] text-muted">
+                      <span>Capacidad</span>
+                      <span className={lleno ? "font-bold text-red-400" : ""}>{pct}% · {e.oyentesMaximos} máx</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-bg">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          lleno ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-brand-grad"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pico */}
+                <div className="flex items-center justify-between rounded-xl bg-surface2 p-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={16} className="text-amber-400" />
+                    <span className="text-sm text-muted">Pico máximo</span>
+                  </div>
+                  <span className="font-display text-lg font-bold text-fg">{e.picoOyentes || 0}</span>
+                </div>
+
+                {/* AutoDJ */}
+                <div className="flex items-center justify-between rounded-xl bg-surface2 p-4">
+                  <div className="flex items-center gap-2">
+                    <Disc3 size={16} className={e.autodj ? "text-brand-400 animate-spin-slow" : "text-muted"} />
+                    <span className="text-sm text-muted">AutoDJ</span>
+                  </div>
+                  <span className={`badge ${e.autodj ? "bg-brand-500/15 text-brand-400" : "bg-surface text-muted"}`}>
+                    {e.autodj ? "Activo" : "Inactivo"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Columna 2: Gráfica de oyentes */}
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <TrendingUp size={14} /> Oyentes en tiempo real
+                </h3>
+                <div className="rounded-xl bg-surface2 p-4">
+                  {oyentesHistorial.length > 2 ? (
+                    <>
+                      <MiniGrafica historial={oyentesHistorial} />
+                      <p className="mt-2 text-center text-[10px] text-muted">
+                        Últimos {oyentesHistorial.length} snapshots (cada 3s)
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex h-16 items-center justify-center text-xs text-muted">
+                      Recopilando datos...
+                    </div>
+                  )}
+                </div>
+
+                {/* Calidad de señal */}
+                <div className="rounded-xl bg-surface2 p-4">
+                  <h4 className="mb-2 text-xs font-semibold text-muted">Señal</h4>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-fg">{e.bitrate || "—"}</p>
+                      <p className="text-[10px] text-muted">kbps</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-fg">{e.formato || "—"}</p>
+                      <p className="text-[10px] text-muted">Formato</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-fg">{online ? "OK" : "—"}</p>
+                      <p className="text-[10px] text-muted">Estado</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Columna 3: Historial de reproducción */}
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <History size={14} /> Historial
+                </h3>
+                <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl bg-surface2 p-3">
+                  {historial.length > 0 ? (
+                    historial.slice(0, 15).map((h, i) => (
+                      <div key={h.id || i} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10">
+                          {h.artwork ? (
+                            <img src={h.artwork} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                          ) : (
+                            <Music2 size={14} className="text-brand-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-fg">{h.titulo || "—"}</p>
+                          <p className="truncate text-[10px] text-muted">{h.artista || ""}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex h-20 items-center justify-center text-xs text-muted">
+                      Sin historial aún
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Tarjeta para crear nueva estación */}
+      {puedeCrear && (
         <button
           onClick={() => setModalEstacion({})}
-          className="flex min-h-[260px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line text-muted transition hover:border-brand-500/60 hover:text-brand-500"
+          className="flex w-full min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line text-muted transition hover:border-brand-500/60 hover:text-brand-500 hover:bg-brand-500/5"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface2">
             <Plus size={24} />
           </div>
-          <span className="text-sm font-semibold">Nueva estación</span>
+          <span className="text-sm font-semibold">Agregar nueva estación</span>
+          <span className="text-xs text-muted">({estacionesVivo.length}/{maxEstaciones} usadas)</span>
         </button>
-      </div>
+      )}
 
+      {/* Límite alcanzado */}
+      {!puedeCrear && estacionesVivo.length > 0 && (
+        <div className="flex items-center justify-center gap-3 rounded-xl border border-line bg-surface2 p-4 text-sm text-muted">
+          <Lock size={16} />
+          <span>Has alcanzado el límite de tu plan ({maxEstaciones} estación{maxEstaciones > 1 ? "es" : ""}). </span>
+          <a href="/planes" className="font-semibold text-brand-400 hover:underline">Mejorar plan</a>
+        </div>
+      )}
+
+      {/* Modales */}
       {modalEstacion && (
         <ModalEstacion
           estacion={modalEstacion.estacion}

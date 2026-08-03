@@ -142,6 +142,9 @@ export const api = {
   exportarBackup: () => request("/backup/exportar"),
   importarBackup: (datos) => request("/backup/importar", { metodo: "POST", cuerpo: datos }),
 
+  // Historial de reproducción por estación
+  historialEstacion: (estacionId) => request(`/publico/historial?estacionId=${estacionId}`),
+
   // Página pública de radio (sin autenticación)
   radioPublica: () => request("/publico/radio", { auth: false }),
   historialPublico: () => request("/publico/historial", { auth: false }),
