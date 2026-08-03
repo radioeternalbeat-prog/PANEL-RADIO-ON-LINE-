@@ -1,6 +1,7 @@
 import { RadioTower } from "lucide-react";
 import { MezcladorProvider } from "../context/MezcladorContext";
 import OnAir from "../components/transmision/OnAir";
+import PanelConexion from "../components/transmision/PanelConexion";
 import PanelMezclador from "../components/transmision/PanelMezclador";
 import PanelReproductor from "../components/transmision/PanelReproductor";
 import PanelMicrofonos from "../components/transmision/PanelMicrofonos";
@@ -24,6 +25,9 @@ export default function Transmision() {
           </div>
           <OnAir />
         </div>
+
+        {/* Conexión al servidor de streaming (Icecast) */}
+        <PanelConexion />
 
         {/* Mezclador DJ en vivo (centro de la cabina) */}
         <PanelMezclador />

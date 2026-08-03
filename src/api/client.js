@@ -145,6 +145,12 @@ export const api = {
   // Historial de reproducción por estación
   historialEstacion: (estacionId) => request(`/publico/historial?estacionId=${estacionId}`),
 
+  // Streaming: conexión a Icecast
+  streamingTest: (config) => request("/streaming/test", { metodo: "POST", cuerpo: config }),
+  streamingConectar: (datos) => request("/streaming/conectar", { metodo: "POST", cuerpo: datos }),
+  streamingDesconectar: (estacionId) => request("/streaming/desconectar", { metodo: "POST", cuerpo: { estacionId } }),
+  streamingEstado: (estacionId) => request(`/streaming/estado/${estacionId}`),
+
   // Página pública de radio (sin autenticación)
   radioPublica: () => request("/publico/radio", { auth: false }),
   historialPublico: () => request("/publico/historial", { auth: false }),

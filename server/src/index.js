@@ -22,9 +22,11 @@ import midiRoutes from "./routes/midi.routes.js";
 import backupRoutes from "./routes/backup.routes.js";
 import publicoRoutes from "./routes/publico.routes.js";
 import ahoraRoutes from "./routes/ahora.routes.js";
+import streamingRoutes from "./routes/streaming.routes.js";
 import { mensajesRepo } from "./db/repos.js";
 import { planesRepo } from "./db/licencias.js";
 import { iniciarWebSocket } from "./realtime.js";
+import { iniciarStreamingWs } from "./streamingWs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -105,6 +107,7 @@ app.use("/api/mensajes", requiereAuth, requiereLicencia, mensajesRoutes);
 app.use("/api/midi", requiereAuth, requiereLicencia, midiRoutes);
 app.use("/api/backup", requiereAuth, requiereSuperadmin, backupRoutes);
 app.use("/api/ahora-suena", requiereAuth, requiereLicencia, ahoraRoutes);
+app.use("/api/streaming", requiereAuth, requiereLicencia, streamingRoutes);
 
 // 404 para rutas de API no encontradas
 app.use("/api", (req, res) => {
@@ -131,6 +134,7 @@ app.use((err, req, res, next) => {
 
 const server = http.createServer(app);
 iniciarWebSocket(server);
+iniciarStreamingWs(server);
 
 server.listen(PORT, () => {
   console.log(`🚀 PANEL RADIO ONLINE escuchando en http://localhost:${PORT}`);
