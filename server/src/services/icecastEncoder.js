@@ -18,8 +18,8 @@ const conexiones = new Map(); // estacionId -> { req, estado, config, iniciadoEn
 
 /**
  * Conecta al servidor Icecast y abre el stream SOURCE.
- * @param {object} config - { host, port, mountpoint, username, password, contentType, bitrate, nombre }
  * @param {string} estacionId - ID de la estación
+ * @param {object} config - { host, port, mountpoint, username, password, contentType, bitrate, nombre }
  * @returns {Promise<object>} - { ok, mensaje }
  */
 export function conectarIcecast(estacionId, config) {
@@ -34,6 +34,10 @@ export function conectarIcecast(estacionId, config) {
 
     const auth = Buffer.from(`${username || "source"}:${password}`).toString("base64");
 
+    // Content-Type: usar audio/mpeg por defecto (FFmpeg transcodifica a MP3)
+    // Si el servidor no soporta MP3, el usuario puede cambiarlo
+    const tipo = contentType || "audio/mpeg";
+
     const opciones = {
       hostname: hostLimpio,
       port: port || (usarHttps ? 443 : 8000),
@@ -41,7 +45,7 @@ export function conectarIcecast(estacionId, config) {
       method: "PUT",
       headers: {
         Authorization: `Basic ${auth}`,
-        "Content-Type": contentType || "audio/mpeg",
+        "Content-Type": tipo,
         "Ice-Name": nombre || "Panel Radio Online",
         "Ice-Description": "Transmisión desde Panel Radio Online",
         "Ice-Genre": "Variada",
@@ -59,7 +63,7 @@ export function conectarIcecast(estacionId, config) {
         conexiones.set(estacionId, {
           req,
           estado: "conectado",
-          config,
+          config: { ...config, contentType: tipo },
           iniciadoEn: Date.now(),
           bytesEnviados: 0,
         });

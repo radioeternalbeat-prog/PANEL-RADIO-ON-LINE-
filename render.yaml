@@ -14,7 +14,7 @@ services:
     name: panel-radio-online
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && cd server && npm install
+    buildCommand: apt-get update && apt-get install -y ffmpeg || true; npm install && npm run build && cd server && npm install
     startCommand: cd server && npm start
     # Disco persistente para conservar la base de datos y los audios subidos.
     # NOTA: los discos requieren un plan de pago en Render. En el plan gratuito,

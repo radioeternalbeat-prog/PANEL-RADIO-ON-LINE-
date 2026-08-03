@@ -1,5 +1,8 @@
-# Imagen del PANEL (frontend compilado + API + WebSocket)
+# Imagen del PANEL (frontend compilado + API + WebSocket + Transcoder)
 FROM node:22-slim
+
+# Instalar FFmpeg para transcoding de audio (WebM/Opus → MP3)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
