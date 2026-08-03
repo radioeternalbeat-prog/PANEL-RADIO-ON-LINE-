@@ -33,17 +33,26 @@ export function AuthProvider({ children }) {
 
   // Login unificado: intenta primero como tenant, luego como admin legacy
   async function iniciarSesion(nombreUsuario, clave) {
+    let tenantError = null;
+    // Intento 1: login como tenant (clientes registrados)
     try {
       const { token, usuario: u } = await tenantApi.login(nombreUsuario, clave);
       setToken(token);
       setUsuario(u);
       return u;
-    } catch {
-      // Fallback: login legacy (admin del panel original)
+    } catch (err) {
+      tenantError = err;
+    }
+
+    // Intento 2: login como admin legacy (tabla usuarios original)
+    try {
       const { token, usuario: u } = await api.login(nombreUsuario, clave);
       setToken(token);
       setUsuario(u);
       return u;
+    } catch {
+      // Si ambos fallaron, lanzar el error del primer intento (más relevante)
+      throw tenantError || new Error("Usuario o contraseña incorrectos.");
     }
   }
 

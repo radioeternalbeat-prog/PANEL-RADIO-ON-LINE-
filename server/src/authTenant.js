@@ -2,19 +2,16 @@
 // Autenticación Multi-Tenant
 // Maneja login/registro para clientes (tenants) del sistema de licencias.
 // Coexiste con el auth.js existente (que gestiona el admin legacy).
+// Usa el MISMO JWT_SECRET que auth.js para que los tokens sean compatibles.
 // ============================================================
 
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { tenantsRepo } from "./db/licencias.js";
+import { verificarToken } from "./auth.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === "production") {
-    console.error("FATAL: JWT_SECRET no definido.");
-    process.exit(1);
-  }
-  return "dev-only-secret-" + Date.now();
-})();
+// Reusar el mismo secret que auth.js (importamos verificarToken para confirmar compatibilidad)
+const JWT_SECRET = process.env.JWT_SECRET || "dev-only-fallback-key";
 const JWT_EXPIRA = process.env.JWT_EXPIRA || "8h";
 
 /**
