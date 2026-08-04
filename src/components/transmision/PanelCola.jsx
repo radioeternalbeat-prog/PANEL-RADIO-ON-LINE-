@@ -78,7 +78,7 @@ export default function PanelCola() {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted">
           <ListMusic size={16} className="text-brand-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wide">Cola automatizada</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide">Biblioteca y AutoDJ</h3>
         </div>
         {/* Toggle AutoDJ */}
         <button
