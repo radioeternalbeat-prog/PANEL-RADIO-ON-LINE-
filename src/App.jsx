@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 import RutaProtegida from "./components/RutaProtegida";
 import Login from "./pages/Login";
@@ -38,7 +38,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="transmision" element={<Transmision />} />
-        <Route path="mezclador" element={<Mezclador />} />
+        <Route path="mezclador" element={null} />
         <Route path="estadisticas" element={<Estadisticas />} />
         <Route path="autodj" element={<AutoDJ />} />
         <Route path="configuracion" element={<Configuracion />} />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   BarChart3,
   Bell,
@@ -28,6 +28,7 @@ import { useMidiTarget } from "../context/MidiContext";
 import { MezcladorProvider } from "../context/MezcladorContext";
 import MiniReproductor from "./MiniReproductor";
 import AvisoMidi from "./AvisoMidi";
+import Mezclador from "../pages/Mezclador";
 
 const navItems = [
   { to: "/", label: "Estaciones", icon: LayoutDashboard, end: true },
@@ -61,6 +62,8 @@ export default function Layout() {
   const { enVivo, alternar: alternarOnAir } = useOnAir();
   const { detener: detenerReproductor } = usePlayer();
   const persona = usuario || cuenta;
+  const location = useLocation();
+  const enMezclador = location.pathname === "/mezclador";
 
   function salir() {
     cerrarSesion();
@@ -242,7 +245,13 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 pb-28 lg:p-6">
-          <Outlet />
+          {/* Mezclador siempre montado (oculto cuando no está activo) para
+              que el Web Audio y los decks no se pierdan al navegar */}
+          <div style={{ display: enMezclador ? "block" : "none" }}>
+            <Mezclador />
+          </div>
+          {/* Resto de páginas via router */}
+          {!enMezclador && <Outlet />}
         </main>
       </div>
 
