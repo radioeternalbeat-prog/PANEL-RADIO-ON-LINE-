@@ -8,6 +8,7 @@ import LicenciaResultado from "./pages/LicenciaResultado";
 import RadioPublica from "./pages/RadioPublica";
 import Dashboard from "./pages/Dashboard";
 import Transmision from "./pages/Transmision";
+import Mezclador from "./pages/Mezclador";
 import Estadisticas from "./pages/Estadisticas";
 import AutoDJ from "./pages/AutoDJ";
 import Configuracion from "./pages/Configuracion";
@@ -37,6 +38,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="transmision" element={<Transmision />} />
+        <Route path="mezclador" element={<Mezclador />} />
         <Route path="estadisticas" element={<Estadisticas />} />
         <Route path="autodj" element={<AutoDJ />} />
         <Route path="configuracion" element={<Configuracion />} />

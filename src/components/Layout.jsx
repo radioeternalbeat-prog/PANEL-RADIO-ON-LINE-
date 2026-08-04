@@ -5,6 +5,7 @@ import {
   Bell,
   CreditCard,
   Crown,
+  Disc3,
   LayoutDashboard,
   ListMusic,
   LogOut,
@@ -30,6 +31,7 @@ import AvisoMidi from "./AvisoMidi";
 const navItems = [
   { to: "/", label: "Estaciones", icon: LayoutDashboard, end: true },
   { to: "/transmision", label: "Transmisión", icon: RadioTower },
+  { to: "/mezclador", label: "Mezclador DJ", icon: Disc3 },
   { to: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { to: "/autodj", label: "AutoDJ", icon: ListMusic },
   { to: "/planes", label: "Planes y Licencia", icon: CreditCard },
@@ -70,6 +72,7 @@ export default function Layout() {
   // de un DDJ) sin depender de qué panel esté abierto en ese momento.
   useMidiTarget("global.navEstaciones", () => navigate("/"));
   useMidiTarget("global.navTransmision", () => navigate("/transmision"));
+  useMidiTarget("global.navMezclador", () => navigate("/mezclador"));
   useMidiTarget("global.navEstadisticas", () => navigate("/estadisticas"));
   useMidiTarget("global.navAutodj", () => navigate("/autodj"));
   useMidiTarget("global.navConfiguracion", () => navigate("/configuracion"));

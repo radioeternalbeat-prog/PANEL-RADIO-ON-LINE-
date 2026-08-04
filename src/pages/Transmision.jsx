@@ -2,15 +2,11 @@ import { RadioTower } from "lucide-react";
 import { MezcladorProvider } from "../context/MezcladorContext";
 import OnAir from "../components/transmision/OnAir";
 import PanelConexion from "../components/transmision/PanelConexion";
-import PanelMezclador from "../components/transmision/PanelMezclador";
-import PanelReproductor from "../components/transmision/PanelReproductor";
 import PanelMicrofonos from "../components/transmision/PanelMicrofonos";
-import PanelCola from "../components/transmision/PanelCola";
+import PanelMensajes from "../components/transmision/PanelMensajes";
 import PanelReloj from "../components/transmision/PanelReloj";
 import PanelClima from "../components/transmision/PanelClima";
-import PanelAudifonos from "../components/transmision/PanelAudifonos";
-import PanelMensajes from "../components/transmision/PanelMensajes";
-import PanelSoundboard from "../components/transmision/PanelSoundboard";
+import PanelReproductor from "../components/transmision/PanelReproductor";
 
 export default function Transmision() {
   return (
@@ -21,7 +17,7 @@ export default function Transmision() {
             <h1 className="flex items-center gap-2 text-2xl font-bold text-fg">
               <RadioTower className="text-brand-500" size={24} /> Transmisión
             </h1>
-            <p className="text-sm text-muted">Cabina en vivo: reproductor, AutoDJ, mensajes, clima y efectos.</p>
+            <p className="text-sm text-muted">Conexión al servidor, micrófonos y estado al aire.</p>
           </div>
           <OnAir />
         </div>
@@ -29,33 +25,22 @@ export default function Transmision() {
         {/* Conexión al servidor de streaming (Icecast) */}
         <PanelConexion />
 
-        {/* Mezclador DJ en vivo (centro de la cabina) */}
-        <PanelMezclador />
-
-        {/* Fila 1: (Micrófonos + Audífonos) · Cola · (Reproductor + Hora/Clima + Mensajes) */}
-        <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {/* Izquierda */}
-          <div className="flex flex-col gap-5">
-            <PanelMicrofonos />
-            <PanelAudifonos />
-          </div>
-
-          {/* Centro */}
-          <PanelCola />
-
-          {/* Derecha */}
-          <div className="flex flex-col gap-5">
-            <PanelReproductor />
-            <div className="grid grid-cols-2 gap-5">
-              <PanelReloj />
-              <PanelClima />
-            </div>
-            <PanelMensajes />
-          </div>
+        {/* Micrófonos + Reproductor */}
+        <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-2">
+          <PanelMicrofonos />
+          <PanelReproductor />
         </div>
 
-        {/* Fila 2: Soundboard a todo el ancho */}
-        <PanelSoundboard />
+        {/* Mensajes + Info */}
+        <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <PanelMensajes />
+          </div>
+          <div className="flex flex-col gap-5">
+            <PanelReloj />
+            <PanelClima />
+          </div>
+        </div>
       </div>
     </MezcladorProvider>
   );
