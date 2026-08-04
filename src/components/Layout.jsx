@@ -35,7 +35,7 @@ const navItems = [
   { to: "/transmision", label: "Transmisión", icon: RadioTower },
   { to: "/mezclador", label: "Mezclador DJ", icon: Disc3 },
   { to: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
-  { to: "/autodj", label: "AutoDJ", icon: ListMusic },
+  { to: "/autodj", label: "Biblioteca y AutoDJ", icon: ListMusic },
   { to: "/planes", label: "Planes y Licencia", icon: CreditCard },
   { to: "/configuracion", label: "Configuración", icon: Settings },
 ];
