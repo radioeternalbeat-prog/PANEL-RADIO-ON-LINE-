@@ -25,6 +25,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useOnAir } from "../context/OnAirContext";
 import { usePlayer } from "../context/PlayerContext";
 import { useMidiTarget } from "../context/MidiContext";
+import { MezcladorProvider } from "../context/MezcladorContext";
 import MiniReproductor from "./MiniReproductor";
 import AvisoMidi from "./AvisoMidi";
 
@@ -84,6 +85,7 @@ export default function Layout() {
   useMidiTarget("global.panico", () => detenerReproductor());
 
   return (
+    <MezcladorProvider>
     <div className="flex h-screen overflow-hidden bg-bg">
       {/* Sidebar */}
       <aside
@@ -247,5 +249,6 @@ export default function Layout() {
       <MiniReproductor />
       <AvisoMidi />
     </div>
+    </MezcladorProvider>
   );
 }
