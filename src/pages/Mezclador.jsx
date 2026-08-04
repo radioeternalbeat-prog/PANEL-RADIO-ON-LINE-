@@ -4,6 +4,7 @@ import PanelMezclador from "../components/transmision/PanelMezclador";
 import PanelReproductor from "../components/transmision/PanelReproductor";
 import PanelMicrofonos from "../components/transmision/PanelMicrofonos";
 import PanelCola from "../components/transmision/PanelCola";
+import PanelPlaylists from "../components/transmision/PanelPlaylists";
 import PanelReloj from "../components/transmision/PanelReloj";
 import PanelClima from "../components/transmision/PanelClima";
 import PanelAudifonos from "../components/transmision/PanelAudifonos";
@@ -26,7 +27,7 @@ export default function Mezclador() {
       {/* Mezclador DJ en vivo (centro de la cabina) */}
       <PanelMezclador />
 
-      {/* Fila 1: (Micrófonos + Audífonos) · Cola · (Reproductor + Hora/Clima + Mensajes) */}
+      {/* Fila 1: (Micrófonos + Audífonos) · Cola AutoDJ · (Reproductor + Hora/Clima + Mensajes) */}
       <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
         {/* Izquierda */}
         <div className="flex flex-col gap-5">
@@ -34,7 +35,7 @@ export default function Mezclador() {
           <PanelAudifonos />
         </div>
 
-        {/* Centro */}
+        {/* Centro: Cola AutoDJ (todas las canciones para reproducción automática) */}
         <PanelCola />
 
         {/* Derecha */}
@@ -48,7 +49,10 @@ export default function Mezclador() {
         </div>
       </div>
 
-      {/* Fila 2: Soundboard a todo el ancho */}
+      {/* Fila 2: Playlists (navegar por playlist y cargar a decks) */}
+      <PanelPlaylists />
+
+      {/* Fila 3: Soundboard a todo el ancho */}
       <PanelSoundboard />
     </div>
   );
