@@ -236,6 +236,8 @@ export const tenantApi = {
   perfil: () => request("/tenant/perfil"),
   cambiarClave: (actual, nueva) =>
     request("/tenant/cambiar-clave", { metodo: "POST", cuerpo: { actual, nueva } }),
+  actualizarPerfilRadio: (datos) =>
+    request("/tenant/perfil-radio", { metodo: "PUT", cuerpo: datos }),
 };
 
 // Agregar métodos de licencias y pagos al api principal

@@ -68,6 +68,8 @@ router.get("/perfil", requiereAuth, (req, res) => {
     telefono: tenant.telefono,
     rol: tenant.rol,
     estado: tenant.estado,
+    nombreRadio: tenant.nombreRadio,
+    logoUrl: tenant.logoUrl,
     licenciaActiva: tenant.licenciaActiva,
     licenciaExpirada: tenant.licenciaExpirada,
     enTrial: tenant.enTrial,
@@ -77,6 +79,16 @@ router.get("/perfil", requiereAuth, (req, res) => {
     licenciaExpira: tenant.licenciaExpira,
     planId: tenant.planId,
   });
+});
+
+// PUT /api/tenant/perfil-radio  { nombreRadio, logoUrl }  (requiere token)
+// Permite al usuario personalizar el nombre y logo de su radio.
+router.put("/perfil-radio", requiereAuth, (req, res) => {
+  const { nombreRadio, logoUrl } = req.body || {};
+  const tenantId = req.usuario.tenantId || req.usuario.id;
+  const tenant = tenantsRepo.actualizarDatos(tenantId, { nombreRadio, logoUrl });
+  if (!tenant) return res.status(404).json({ mensaje: "Cuenta no encontrada." });
+  res.json({ mensaje: "Perfil de radio actualizado.", nombreRadio: tenant.nombreRadio, logoUrl: tenant.logoUrl });
 });
 
 // POST /api/tenant/cambiar-clave  { actual, nueva }  (requiere token)

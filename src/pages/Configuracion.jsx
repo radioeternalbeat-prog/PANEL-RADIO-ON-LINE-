@@ -5,6 +5,7 @@ import {
   Download,
   KeyRound,
   Loader2,
+  Radio,
   Save,
   Server,
   Sliders,
@@ -156,8 +157,22 @@ export default function Configuracion() {
             descripcion: e.descripcion || "",
             sourceUser: e.sourceUser || "",
             sourcePassword: "",
+            nombreRadio: "",
+            logoUrl: "",
           });
         }
+        // Cargar perfil de radio del tenant
+        try {
+          const { tenantApi } = await import("../api/client");
+          const perfil = await tenantApi.perfil();
+          if (perfil) {
+            setCfg((c) => ({
+              ...c,
+              nombreRadio: perfil.nombreRadio || "",
+              logoUrl: perfil.logoUrl || "",
+            }));
+          }
+        } catch { /* no es tenant, es admin legacy */ }
       } catch (err) {
         setErrorCfg("No se pudo cargar la configuración: " + (err.message || "Error desconocido"));
       } finally {
@@ -177,18 +192,29 @@ export default function Configuracion() {
     setGuardando(true);
     setErrorCfg(null);
     try {
-      await api.actualizarEstacion(estacionId, {
-        nombre: cfg.nombre,
-        host: cfg.host,
-        puerto: Number(cfg.puerto),
-        montaje: cfg.montaje,
-        formato: cfg.formato,
-        bitrate: Number(cfg.bitrate),
-        oyentes_maximos: Number(cfg.oyentesMaximos),
-        autodj: cfg.autodj ? 1 : 0,
-        genero: cfg.genero,
-        descripcion: cfg.descripcion,
-      });
+      // Guardar datos de la estación
+      if (estacionId) {
+        await api.actualizarEstacion(estacionId, {
+          nombre: cfg.nombre,
+          host: cfg.host,
+          puerto: Number(cfg.puerto),
+          montaje: cfg.montaje,
+          formato: cfg.formato,
+          bitrate: Number(cfg.bitrate),
+          oyentes_maximos: Number(cfg.oyentesMaximos),
+          autodj: cfg.autodj ? 1 : 0,
+          genero: cfg.genero,
+          descripcion: cfg.descripcion,
+        });
+      }
+      // Guardar perfil de radio (nombre y logo)
+      try {
+        const { tenantApi } = await import("../api/client");
+        await tenantApi.actualizarPerfilRadio({
+          nombreRadio: cfg.nombreRadio || null,
+          logoUrl: cfg.logoUrl || null,
+        });
+      } catch { /* no es tenant */ }
       setGuardado(true);
       setTimeout(() => setGuardado(false), 3000);
     } catch (err) {
@@ -223,6 +249,29 @@ export default function Configuracion() {
       <form onSubmit={guardar} className="grid gap-6 lg:grid-cols-3">
         {/* Columna principal */}
         <div className="space-y-6 lg:col-span-2">
+          {/* Perfil de tu radio */}
+          <div className="card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Radio size={18} className="text-brand-500" />
+              <h2 className="font-semibold text-fg">Tu Radio</h2>
+            </div>
+            <p className="mb-3 text-xs text-muted">Personaliza cómo se muestra tu radio en el panel. Este nombre y logo aparecen en la barra superior.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="Nombre de tu radio">
+                <input className="input" value={cfg.nombreRadio || ""} onChange={(ev) => set("nombreRadio", ev.target.value)} placeholder="Mi Radio Online" />
+              </Campo>
+              <Campo label="URL del logo (imagen)">
+                <input className="input" value={cfg.logoUrl || ""} onChange={(ev) => set("logoUrl", ev.target.value)} placeholder="https://ejemplo.com/mi-logo.png" />
+              </Campo>
+            </div>
+            {cfg.logoUrl && (
+              <div className="mt-3 flex items-center gap-3">
+                <img src={cfg.logoUrl} alt="Logo" className="h-12 w-12 rounded-lg object-cover border border-line" onError={(e) => { e.target.style.display = "none"; }} />
+                <span className="text-xs text-muted">Vista previa del logo</span>
+              </div>
+            )}
+          </div>
+
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Server size={18} className="text-brand-500" />

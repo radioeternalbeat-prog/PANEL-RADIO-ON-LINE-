@@ -201,6 +201,8 @@ function mapTenant(r) {
     usuario: r.usuario,
     rol: r.rol,
     estado: r.estado,
+    nombreRadio: r.nombre_radio || null,
+    logoUrl: r.logo_url || null,
     trialInicio: r.trial_inicio,
     trialFin: r.trial_fin,
     licenciaActiva: !!r.licencia_activa,
@@ -309,6 +311,8 @@ export const tenantsRepo = {
     if (d.email) { sets.push("email = ?"); vals.push(d.email); }
     if (d.telefono !== undefined) { sets.push("telefono = ?"); vals.push(d.telefono); }
     if (d.notas !== undefined) { sets.push("notas = ?"); vals.push(d.notas); }
+    if (d.nombreRadio !== undefined) { sets.push("nombre_radio = ?"); vals.push(d.nombreRadio); }
+    if (d.logoUrl !== undefined) { sets.push("logo_url = ?"); vals.push(d.logoUrl); }
     if (sets.length) {
       sets.push("actualizado = ?");
       vals.push(Date.now());
@@ -445,6 +449,10 @@ sembrarPlanes();
     }
   }
 })();
+
+// Migración: campos de personalización de radio (logo y nombre)
+try { db.exec("ALTER TABLE tenants ADD COLUMN nombre_radio TEXT"); } catch { /* ya existe */ }
+try { db.exec("ALTER TABLE tenants ADD COLUMN logo_url TEXT"); } catch { /* ya existe */ }
 
 // Crear superadmin si no existe en tenants (el dueño de la plataforma)
 const superadminExiste = db.prepare("SELECT 1 FROM tenants WHERE rol = 'superadmin'").get();

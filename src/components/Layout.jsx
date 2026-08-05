@@ -212,6 +212,20 @@ export default function Layout() {
             <input className="input pl-9" placeholder="Buscar estación, canción o cliente..." />
           </div>
 
+          {/* Logo y nombre de la radio del usuario */}
+          {persona?.nombreRadio && (
+            <div className="hidden items-center gap-2 md:flex">
+              {persona.logoUrl && (
+                <img
+                  src={persona.logoUrl}
+                  alt={persona.nombreRadio}
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
+              )}
+              <span className="text-sm font-bold text-fg">{persona.nombreRadio}</span>
+            </div>
+          )}
+
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             {enVivo && (
               <button
