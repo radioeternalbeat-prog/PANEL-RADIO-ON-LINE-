@@ -120,7 +120,7 @@ app.use("/api", (req, res) => {
 const distDir = path.resolve(__dirname, "../../dist");
 if (existsSync(distDir)) {
   app.use(express.static(distDir));
-  app.get(/^(?!\/api).*/, (req, res) => {
+  app.get(/^(?!\/api|\/ws).*/, (req, res) => {
     res.sendFile(path.join(distDir, "index.html"));
   });
   console.log("🌐 Sirviendo frontend desde", distDir);
