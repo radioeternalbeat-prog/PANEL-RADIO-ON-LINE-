@@ -27,6 +27,20 @@ const PRESETS = [
   { label: "Max (320 kbps)", bitrate: 320, contentType: "audio/mpeg" },
 ];
 
+const SERVER_PRESETS = [
+  { label: "Centova Cast", value: "centova", port: 8000, protocolo: "source", username: "source", mountpoint: "/stream" },
+  { label: "Icecast 2.4+", value: "icecast", port: 8000, protocolo: "put", username: "source", mountpoint: "/stream" },
+  { label: "AzuraCast", value: "azuracast", port: 8000, protocolo: "put", username: "source", mountpoint: "/radio.mp3" },
+  { label: "SHOUTcast", value: "shoutcast", port: 8000, protocolo: "icy", username: "", mountpoint: "/" },
+];
+
+const PROTOCOLOS = [
+  { label: "Auto-detectar", value: "auto" },
+  { label: "SOURCE (Centova/Icecast legacy)", value: "source" },
+  { label: "PUT (Icecast 2.4+)", value: "put" },
+  { label: "ICY (SHOUTcast v1)", value: "icy" },
+];
+
 export default function PanelConexion() {
   const { obtenerNodos } = useMezclador();
   const [expandido, setExpandido] = useState(true);
@@ -39,7 +53,10 @@ export default function PanelConexion() {
     bitrate: 128,
     contentType: "audio/mpeg",
     nombre: "",
+    protocolo: "auto",
   });
+
+  const [tipoServidor, setTipoServidor] = useState("centova");
 
   const [estado, setEstado] = useState("desconectado"); // desconectado | conectando | conectado | error
   const [mensaje, setMensaje] = useState("");
@@ -256,7 +273,7 @@ export default function PanelConexion() {
                 ? `Al aire · ${formatDuracion(stats.duracion)} · ${formatBytes(stats.bytesEnviados)}`
                 : estado === "conectando"
                   ? "Conectando..."
-                  : "Icecast / Centova Cast"
+                  : SERVER_PRESETS.find((p) => p.value === tipoServidor)?.label || "Icecast / Centova Cast"
               }
             </p>
           </div>
@@ -302,6 +319,44 @@ export default function PanelConexion() {
           {/* Formulario de conexión */}
           {!conectado && (
             <div className="grid gap-3 sm:grid-cols-2">
+              {/* Tipo de servidor */}
+              <div>
+                <label className="text-[11px] font-semibold uppercase text-muted">Tipo de servidor</label>
+                <select
+                  className="input mt-1"
+                  value={tipoServidor}
+                  onChange={(e) => {
+                    const preset = SERVER_PRESETS.find((p) => p.value === e.target.value);
+                    setTipoServidor(e.target.value);
+                    if (preset) {
+                      setConfig((c) => ({
+                        ...c,
+                        port: preset.port,
+                        protocolo: preset.protocolo,
+                        username: preset.username || c.username,
+                        mountpoint: preset.mountpoint,
+                      }));
+                    }
+                  }}
+                >
+                  {SERVER_PRESETS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Protocolo */}
+              <div>
+                <label className="text-[11px] font-semibold uppercase text-muted">Protocolo</label>
+                <select
+                  className="input mt-1"
+                  value={config.protocolo}
+                  onChange={(e) => set("protocolo", e.target.value)}
+                >
+                  {PROTOCOLOS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="text-[11px] font-semibold uppercase text-muted">Host del servidor</label>
                 <input
@@ -415,8 +470,8 @@ export default function PanelConexion() {
           {/* Nota informativa */}
           {!conectado && (
             <p className="text-[10px] text-muted text-center">
-              Conecta tu servidor Icecast/Centova Cast. El audio del mezclador se enviará en tiempo real.
-              Asegúrate de tener al menos un deck reproduciendo antes de conectar.
+              Soporta Centova Cast, Icecast 2.4+, AzuraCast y SHOUTcast. El protocolo se auto-detecta o puedes forzarlo manualmente.
+              Asegurate de tener al menos un deck reproduciendo antes de conectar.
             </p>
           )}
         </div>

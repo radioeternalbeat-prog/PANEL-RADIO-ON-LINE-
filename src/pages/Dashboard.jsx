@@ -29,6 +29,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "../context/AuthContext";
 import ModalEstacion from "../components/estaciones/ModalEstacion";
 import ModalCompartir from "../components/estaciones/ModalCompartir";
+import WizardBienvenida from "../components/WizardBienvenida";
 
 // ---- Componentes auxiliares ----
 
@@ -186,6 +187,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Wizard de bienvenida (solo la primera vez) */}
+      <WizardBienvenida />
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
