@@ -29,6 +29,7 @@ import { MezcladorProvider } from "../context/MezcladorContext";
 import MiniReproductor from "./MiniReproductor";
 import AvisoMidi from "./AvisoMidi";
 import Mezclador from "../pages/Mezclador";
+import Transmision from "../pages/Transmision";
 
 const navItems = [
   { to: "/", label: "Estaciones", icon: LayoutDashboard, end: true },
@@ -64,6 +65,7 @@ export default function Layout() {
   const persona = usuario || cuenta;
   const location = useLocation();
   const enMezclador = location.pathname === "/mezclador";
+  const enTransmision = location.pathname === "/transmision";
 
   function salir() {
     cerrarSesion();
@@ -264,8 +266,12 @@ export default function Layout() {
           <div style={{ display: enMezclador ? "block" : "none" }}>
             <Mezclador />
           </div>
+          {/* Transmisión siempre montada para no perder la conexión al servidor */}
+          <div style={{ display: enTransmision ? "block" : "none" }}>
+            <Transmision />
+          </div>
           {/* Resto de páginas via router */}
-          {!enMezclador && <Outlet />}
+          {!enMezclador && !enTransmision && <Outlet />}
         </main>
       </div>
 

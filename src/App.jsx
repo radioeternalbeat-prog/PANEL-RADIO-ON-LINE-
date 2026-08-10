@@ -37,7 +37,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="transmision" element={<Transmision />} />
+        <Route path="transmision" element={null} />
         <Route path="mezclador" element={null} />
         <Route path="estadisticas" element={<Estadisticas />} />
         <Route path="autodj" element={<AutoDJ />} />
