@@ -28,10 +28,10 @@ const PRESETS = [
 ];
 
 const SERVER_PRESETS = [
-  { label: "Centova Cast", value: "centova", port: 8000, protocolo: "source", username: "source", mountpoint: "/stream" },
-  { label: "Icecast 2.4+", value: "icecast", port: 8000, protocolo: "put", username: "source", mountpoint: "/stream" },
-  { label: "AzuraCast", value: "azuracast", port: 8000, protocolo: "put", username: "source", mountpoint: "/radio.mp3" },
-  { label: "SHOUTcast", value: "shoutcast", port: 8000, protocolo: "icy", username: "", mountpoint: "/" },
+  { label: "Centova Cast", value: "centova", port: 8000, protocolo: "source", username: "source", mountpoint: "/stream", ayuda: "Usa el puerto SOURCE que te dio Centova (no el del panel admin). Ej: 8030, 8040..." },
+  { label: "Icecast 2.4+", value: "icecast", port: 8000, protocolo: "put", username: "source", mountpoint: "/stream", ayuda: "Puerto del servidor Icecast (por defecto 8000)." },
+  { label: "AzuraCast", value: "azuracast", port: 8000, protocolo: "put", username: "source", mountpoint: "/radio.mp3", ayuda: "Puerto y mountpoint de tu estación en AzuraCast." },
+  { label: "SHOUTcast", value: "shoutcast", port: 8000, protocolo: "icy", username: "", mountpoint: "/", ayuda: "Usa el puerto SOURCE de SHOUTcast (base +1). Ej: si el servidor es 8000, el source es 8001." },
 ];
 
 const PROTOCOLOS = [
@@ -310,9 +310,9 @@ export default function PanelConexion() {
           )}
 
           {estado === "error" && mensaje && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/30 p-3">
-              <AlertCircle size={16} className="text-red-400 shrink-0" />
-              <p className="text-xs text-red-400">{mensaje}</p>
+            <div className="flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/30 p-3">
+              <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-400 whitespace-pre-line">{mensaje}</p>
             </div>
           )}
 
@@ -357,6 +357,14 @@ export default function PanelConexion() {
                   ))}
                 </select>
               </div>
+              {/* Ayuda contextual del tipo de servidor */}
+              {SERVER_PRESETS.find((p) => p.value === tipoServidor)?.ayuda && (
+                <div className="sm:col-span-2">
+                  <p className="text-[10px] text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">
+                    💡 {SERVER_PRESETS.find((p) => p.value === tipoServidor).ayuda}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="text-[11px] font-semibold uppercase text-muted">Host del servidor</label>
                 <input
@@ -427,11 +435,11 @@ export default function PanelConexion() {
 
           {/* Resultado del test */}
           {testResult && (
-            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+            <div className={`flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
               testResult.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
             }`}>
-              {testResult.ok ? <Check size={14} /> : <AlertCircle size={14} />}
-              {testResult.mensaje}
+              {testResult.ok ? <Check size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
+              <span className="whitespace-pre-line">{testResult.mensaje}</span>
             </div>
           )}
 

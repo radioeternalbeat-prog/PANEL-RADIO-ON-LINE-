@@ -35,7 +35,7 @@ function conectarSOURCE(config) {
     const mount = mountpoint.startsWith("/") ? mountpoint : `/${mountpoint}`;
     const tipo = contentType || "audio/mpeg";
 
-    const socket = net.createConnection({ host: hostLimpio, port: port || 8000 }, () => {
+    const socket = net.createConnection({ host: hostLimpio, port: port || 8000, family: 4 }, () => {
       // Enviar handshake SOURCE
       const headers = [
         `SOURCE ${mount} HTTP/1.0`,
@@ -85,11 +85,11 @@ function conectarSOURCE(config) {
       }
     });
 
-    socket.setTimeout(10000, () => {
+    socket.setTimeout(15000, () => {
       if (!responded) {
         responded = true;
         socket.destroy();
-        resolve({ ok: false, mensaje: "SOURCE: Timeout (10s)" });
+        resolve({ ok: false, mensaje: "SOURCE: Timeout (15s) — verifica que el puerto es el correcto (puerto SOURCE, no el del panel admin)" });
       }
     });
   });
@@ -113,6 +113,7 @@ function conectarPUT(config) {
       port: port || (usarHttps ? 443 : 8000),
       path: mount,
       method: "PUT",
+      family: 4,
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": tipo,
@@ -156,9 +157,9 @@ function conectarPUT(config) {
       if (!responded) {
         responded = true;
         req.destroy();
-        resolve({ ok: false, mensaje: "PUT: Timeout (10s)" });
+        resolve({ ok: false, mensaje: "PUT: Timeout (15s)" });
       }
-    }, 10000);
+    }, 15000);
   });
 }
 
@@ -176,7 +177,7 @@ function conectarICY(config) {
     const hostLimpio = host.replace(/^https?:\/\//, "");
     const tipo = contentType || "audio/mpeg";
 
-    const socket = net.createConnection({ host: hostLimpio, port: port || 8000 }, () => {
+    const socket = net.createConnection({ host: hostLimpio, port: port || 8000, family: 4 }, () => {
       // Paso 1: enviar la password
       socket.write(`${password}\r\n`);
     });
@@ -237,11 +238,11 @@ function conectarICY(config) {
       }
     });
 
-    socket.setTimeout(10000, () => {
+    socket.setTimeout(15000, () => {
       if (!responded) {
         responded = true;
         socket.destroy();
-        resolve({ ok: false, mensaje: "ICY: Timeout (10s)" });
+        resolve({ ok: false, mensaje: "ICY: Timeout (15s)" });
       }
     });
   });
@@ -437,13 +438,13 @@ export async function testConexion(config) {
   // Mensajes de error amigables
   const msg = resultado.mensaje || "";
   if (msg.includes("ECONNREFUSED")) {
-    return { ok: false, mensaje: "No se pudo conectar. Verifica host y puerto." };
+    return { ok: false, mensaje: "No se pudo conectar. Verifica host y puerto. En Centova Cast, usa el puerto SOURCE (no el del panel de control)." };
   }
   if (msg.includes("ENOTFOUND")) {
     return { ok: false, mensaje: "Host no encontrado. Verifica la direccion del servidor." };
   }
   if (msg.includes("Timeout") || msg.includes("ETIMEDOUT")) {
-    return { ok: false, mensaje: "Tiempo de espera agotado. El servidor no responde." };
+    return { ok: false, mensaje: "Tiempo de espera agotado. El servidor no responde. Posibles causas:\n• El puerto no es el correcto (en Centova Cast usa el puerto SOURCE, no el del admin)\n• Un firewall esta bloqueando la conexion\n• El servidor esta apagado o en mantenimiento" };
   }
 
   return { ok: false, mensaje: resultado.mensaje };
