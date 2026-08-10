@@ -14,16 +14,16 @@ import {
 
 const router = Router();
 
-// POST /api/streaming/test  { host, port, mountpoint, username, password }
+// POST /api/streaming/test  { host, port, mountpoint, username, password, protocolo }
 // Prueba la conexión al servidor Icecast sin iniciar transmisión.
 router.post("/test", async (req, res) => {
-  const { host, port, mountpoint, username, password } = req.body || {};
+  const { host, port, mountpoint, username, password, protocolo, contentType, bitrate, nombre } = req.body || {};
   if (!host || !password) {
     return res.status(400).json({ mensaje: "Host y contraseña son obligatorios." });
   }
 
   try {
-    const resultado = await testConexion({ host, port, mountpoint, username, password });
+    const resultado = await testConexion({ host, port, mountpoint, username, password, protocolo, contentType, bitrate, nombre });
     res.json(resultado);
   } catch (err) {
     res.status(500).json({ ok: false, mensaje: err.message });

@@ -405,6 +405,8 @@ export function estadoConexion(estacionId) {
       host: conn.config.host,
       port: conn.config.port,
       mountpoint: conn.config.mountpoint,
+      bitrate: conn.config.bitrate,
+      contentType: conn.config.contentType,
     },
   };
 }

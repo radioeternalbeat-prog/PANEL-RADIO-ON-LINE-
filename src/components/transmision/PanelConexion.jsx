@@ -139,9 +139,19 @@ export default function PanelConexion() {
       }
 
       // 2. Conectar WebSocket para enviar audio chunks
+      // Determinar el host del backend: si VITE_API_URL está definido, usar ese host.
+      // Si no, usar window.location.host (frontend servido por el mismo backend).
+      let wsHost = window.location.host;
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (apiUrl) {
+        try {
+          const parsed = new URL(apiUrl);
+          wsHost = parsed.host;
+        } catch { /* usar window.location.host */ }
+      }
       const wsProto = window.location.protocol === "https:" ? "wss" : "ws";
       const token = localStorage.getItem("pro_token") || "";
-      const wsUrl = `${wsProto}://${window.location.host}/ws-stream?estacionId=${estacionId}&token=${encodeURIComponent(token)}`;
+      const wsUrl = `${wsProto}://${wsHost}/ws-stream?estacionId=${estacionId}&token=${encodeURIComponent(token)}`;
       const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
@@ -152,17 +162,45 @@ export default function PanelConexion() {
         setMensaje("Transmitiendo al aire.");
       };
 
-      ws.onerror = () => {
-        setEstado("error");
-        setMensaje("Error en la conexión WebSocket de audio.");
+      let wsErrorHandled = false;
+
+      ws.onmessage = (ev) => {
+        // El backend puede enviar mensajes JSON (estado, errores)
+        if (typeof ev.data === "string") {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.tipo === "error") {
+              setEstado("error");
+              setMensaje(msg.mensaje || "Error del servidor de streaming.");
+              ws.close();
+            } else if (msg.tipo === "stats") {
+              setStats({ bytesEnviados: msg.bytesEnviados || 0, duracion: msg.duracion || 0 });
+            }
+          } catch { /* no es JSON, ignorar */ }
+        }
       };
 
-      ws.onclose = () => {
-        detenerCaptura();
-        if (estado === "conectado") {
-          setEstado("desconectado");
-          setMensaje("Conexión cerrada.");
+      ws.onerror = (ev) => {
+        console.error("[WS-Stream] Error:", ev);
+        if (!wsErrorHandled) {
+          wsErrorHandled = true;
+          setEstado("error");
+          setMensaje("Error en la conexión WebSocket de audio. Verifica que el backend esté corriendo y accesible.");
         }
+      };
+
+      ws.onclose = (ev) => {
+        detenerCaptura();
+        wsRef.current = null;
+        if (wsErrorHandled) return; // Ya manejado por onerror
+        // Solo mostrar "cerrada" si estábamos conectados (evitar stale closure)
+        setEstado((prev) => {
+          if (prev === "conectado") {
+            setMensaje(`Conexión cerrada${ev.code !== 1000 ? ` (código ${ev.code})` : ""}.`);
+            return "desconectado";
+          }
+          return prev;
+        });
       };
     } catch (err) {
       setEstado("error");
