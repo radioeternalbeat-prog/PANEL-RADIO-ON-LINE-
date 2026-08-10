@@ -119,7 +119,7 @@ function construirSnapshot() {
 }
 
 export function iniciarWebSocket(server) {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on("connection", (socket, req) => {
     const url = new URL(req.url, "http://localhost");

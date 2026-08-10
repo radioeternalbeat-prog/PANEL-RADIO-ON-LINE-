@@ -11,7 +11,6 @@
 // ============================================================
 
 import { WebSocketServer } from "ws";
-import { verificarToken } from "./auth.js";
 import { enviarChunk, estadoConexion } from "./services/icecastEncoder.js";
 import { crearTranscoder, ffmpegDisponible } from "./services/transcoder.js";
 
@@ -33,36 +32,8 @@ const transcoders = new Map();
 export function iniciarStreamingWs(server) {
   const wss = new WebSocketServer({ noServer: true });
 
-  // Manejar el upgrade HTTP → WebSocket solo para /ws-stream
-  server.on("upgrade", (request, socket, head) => {
-    const url = new URL(request.url, "http://localhost");
-
-    // Solo manejar /ws-stream (dejar /ws para el realtime existente)
-    if (url.pathname !== "/ws-stream") return;
-
-    const token = url.searchParams.get("token");
-    const estacionId = url.searchParams.get("estacionId");
-
-    // Verificar autenticación
-    const payload = token ? verificarToken(token) : null;
-    if (!payload) {
-      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-
-    if (!estacionId) {
-      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      ws.estacionId = estacionId;
-      ws.usuario = payload.usuario;
-      wss.emit("connection", ws, request);
-    });
-  });
+  // El upgrade HTTP → WebSocket se maneja centralmente en index.js
+  // para evitar conflictos con otros WebSocket servers.
 
   wss.on("connection", async (ws) => {
     const estacionId = ws.estacionId;

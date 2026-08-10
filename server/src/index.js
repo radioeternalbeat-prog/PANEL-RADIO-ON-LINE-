@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 
-import { requiereAuth } from "./auth.js";
+import { requiereAuth, verificarToken } from "./auth.js";
 import { requiereLicencia, requiereSuperadmin, infoLicencia } from "./licenciaMiddleware.js";
 import authRoutes from "./routes/auth.routes.js";
 import tenantAuthRoutes from "./routes/tenantAuth.routes.js";
@@ -133,10 +133,47 @@ app.use((err, req, res, next) => {
 });
 
 const server = http.createServer(app);
-iniciarWebSocket(server);
-iniciarStreamingWs(server);
+const wssMetricas = iniciarWebSocket(server);
+const wssStreaming = iniciarStreamingWs(server);
+
+// Manejar upgrade HTTP → WebSocket centralmente para evitar conflictos
+server.on("upgrade", (request, socket, head) => {
+  const url = new URL(request.url, "http://localhost");
+
+  if (url.pathname === "/ws-stream") {
+    // Streaming de audio — verificar auth y estacionId
+    const token = url.searchParams.get("token");
+    const estacionId = url.searchParams.get("estacionId");
+
+    const payload = token ? verificarToken(token) : null;
+    if (!payload) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+    if (!estacionId) {
+      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    wssStreaming.handleUpgrade(request, socket, head, (ws) => {
+      ws.estacionId = estacionId;
+      ws.usuario = payload.usuario;
+      wssStreaming.emit("connection", ws, request);
+    });
+  } else if (url.pathname === "/ws") {
+    // Métricas en tiempo real
+    wssMetricas.handleUpgrade(request, socket, head, (ws) => {
+      wssMetricas.emit("connection", ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 server.listen(PORT, () => {
   console.log(`🚀 PANEL RADIO ONLINE escuchando en http://localhost:${PORT}`);
   console.log(`📡 WebSocket de estadísticas en ws://localhost:${PORT}/ws`);
+  console.log(`🎵 WebSocket de streaming en ws://localhost:${PORT}/ws-stream`);
 });
