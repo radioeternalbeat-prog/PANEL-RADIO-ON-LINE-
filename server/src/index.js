@@ -139,6 +139,7 @@ const wssStreaming = iniciarStreamingWs(server);
 // Manejar upgrade HTTP → WebSocket centralmente para evitar conflictos
 server.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url, "http://localhost");
+  console.log(`[WS Upgrade] pathname=${url.pathname}`);
 
   if (url.pathname === "/ws-stream") {
     // Streaming de audio — verificar auth y estacionId
@@ -147,16 +148,19 @@ server.on("upgrade", (request, socket, head) => {
 
     const payload = token ? verificarToken(token) : null;
     if (!payload) {
+      console.warn("[WS Upgrade] /ws-stream — 401: token inválido o ausente");
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
     }
     if (!estacionId) {
+      console.warn("[WS Upgrade] /ws-stream — 400: falta estacionId");
       socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
       socket.destroy();
       return;
     }
 
+    console.log(`[WS Upgrade] /ws-stream OK — usuario=${payload.usuario}, estacion=${estacionId}`);
     wssStreaming.handleUpgrade(request, socket, head, (ws) => {
       ws.estacionId = estacionId;
       ws.usuario = payload.usuario;
@@ -168,6 +172,7 @@ server.on("upgrade", (request, socket, head) => {
       wssMetricas.emit("connection", ws, request);
     });
   } else {
+    console.warn(`[WS Upgrade] pathname desconocido: ${url.pathname} — destruyendo socket`);
     socket.destroy();
   }
 });

@@ -122,7 +122,8 @@ export default function PanelConexion() {
 
   async function conectar() {
     if (!estacionId) {
-      setMensaje("No hay estación configurada.");
+      setMensaje("No hay estación configurada. Crea una estación en el Dashboard primero.");
+      setEstado("error");
       return;
     }
 
@@ -134,7 +135,7 @@ export default function PanelConexion() {
       const r = await api.streamingConectar({ estacionId, ...config });
       if (!r.ok) {
         setEstado("error");
-        setMensaje(r.mensaje);
+        setMensaje(r.mensaje || "El backend no pudo conectar al servidor de streaming.");
         return;
       }
 
@@ -142,20 +143,28 @@ export default function PanelConexion() {
       // Determinar el host del backend: si VITE_API_URL está definido, usar ese host.
       // Si no, usar window.location.host (frontend servido por el mismo backend).
       let wsHost = window.location.host;
+      let wsProto = window.location.protocol === "https:" ? "wss" : "ws";
       const apiUrl = import.meta.env.VITE_API_URL;
       if (apiUrl) {
         try {
           const parsed = new URL(apiUrl);
           wsHost = parsed.host;
-        } catch { /* usar window.location.host */ }
+          wsProto = parsed.protocol === "https:" ? "wss" : "ws";
+        } catch { /* usar window.location */ }
       }
-      const wsProto = window.location.protocol === "https:" ? "wss" : "ws";
       const token = localStorage.getItem("pro_token") || "";
+      if (!token) {
+        setEstado("error");
+        setMensaje("No hay token de autenticación. Cierra sesión y vuelve a iniciar.");
+        return;
+      }
       const wsUrl = `${wsProto}://${wsHost}/ws-stream?estacionId=${estacionId}&token=${encodeURIComponent(token)}`;
+      console.log("[PanelConexion] Abriendo WebSocket:", wsUrl);
       const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
+        console.log("[PanelConexion] WebSocket abierto correctamente");
         wsRef.current = ws;
         iniciarCaptura();
         setEstado("conectado");
@@ -175,29 +184,42 @@ export default function PanelConexion() {
               ws.close();
             } else if (msg.tipo === "stats") {
               setStats({ bytesEnviados: msg.bytesEnviados || 0, duracion: msg.duracion || 0 });
+            } else if (msg.tipo === "listo") {
+              console.log("[PanelConexion] Backend listo:", msg.formato);
             }
           } catch { /* no es JSON, ignorar */ }
         }
       };
 
       ws.onerror = (ev) => {
-        console.error("[WS-Stream] Error:", ev);
+        console.error("[PanelConexion] WebSocket error:", ev);
         if (!wsErrorHandled) {
           wsErrorHandled = true;
           setEstado("error");
-          setMensaje("Error en la conexión WebSocket de audio. Verifica que el backend esté corriendo y accesible.");
+          setMensaje(
+            `Error al conectar WebSocket de audio.\n` +
+            `URL: ${wsUrl}\n` +
+            `Posibles causas:\n` +
+            `• El backend no está corriendo o no es accesible\n` +
+            `• Un proxy/firewall bloquea WebSockets\n` +
+            `• El token de sesión expiró (recargar página)`
+          );
         }
       };
 
       ws.onclose = (ev) => {
+        console.log("[PanelConexion] WebSocket cerrado:", ev.code, ev.reason);
         detenerCaptura();
         wsRef.current = null;
-        if (wsErrorHandled) return; // Ya manejado por onerror
-        // Solo mostrar "cerrada" si estábamos conectados (evitar stale closure)
+        if (wsErrorHandled) return;
         setEstado((prev) => {
           if (prev === "conectado") {
-            setMensaje(`Conexión cerrada${ev.code !== 1000 ? ` (código ${ev.code})` : ""}.`);
+            setMensaje(`Conexión cerrada${ev.code !== 1000 ? ` (código ${ev.code}${ev.reason ? ": " + ev.reason : ""})` : ""}.`);
             return "desconectado";
+          }
+          if (prev === "conectando") {
+            setMensaje(`No se pudo establecer la conexión WebSocket (código ${ev.code}).`);
+            return "error";
           }
           return prev;
         });
